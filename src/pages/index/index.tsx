@@ -13,10 +13,25 @@ const IndexPage: React.FC = () => {
   const unreadCount = state.messages.filter(m => !m.read).length;
 
   const latestAppt = useMemo(() => {
-    const active = apptList.find(a =>
-      a.status === 'waiting' || a.status === 'calling' || a.status === 'confirmed'
-    );
-    return active || apptList.find(a => a.status === 'completed') || null;
+    // 按数组倒序（最新的在前），先找 waiting/calling，再找 confirmed
+    // 过滤掉 cancelled/missed
+    let waitingMatch: Appointment | null = null;
+    let confirmedMatch: Appointment | null = null;
+    for (let i = 0; i < apptList.length; i++) {
+      const a = apptList[i];
+      if (a.status === 'waiting' || a.status === 'calling') {
+        waitingMatch = a;
+        break; // waiting/calling 优先级最高，找到就停
+      }
+      if (!confirmedMatch && a.status === 'confirmed') {
+        confirmedMatch = a;
+        // 继续找，因为后面可能有 waiting/calling
+      }
+    }
+    const active = waitingMatch || confirmedMatch;
+    if (active) return active;
+    // 没有活跃的，返回最新的已完成（用于显示评价入口）
+    return apptList.find(a => a.status === 'completed') || null;
   }, [apptList]);
 
   const currentWaitingInfo = useMemo(() => {

@@ -12,29 +12,25 @@ const WaitingPage: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { currentAppt, waitingIndex } = useMemo(() => {
-    // 过滤掉已取消和已完成的，只看活跃预约
-    const activeAppts = state.appointments.filter(a =>
-      a.status === 'waiting' || a.status === 'calling' || a.status === 'confirmed'
-    );
+    // 与首页保持完全一致的选择逻辑：
+    // 新预约在数组最前面（unshift），所以从头开始找
+    // 优先级：waiting/calling > confirmed，过滤掉 cancelled/missed
+    let waitingIdx = -1;
+    let confirmedIdx = -1;
 
-    // 优先找 waiting/calling 状态的（按最新创建排序）
-    let activeIdx = -1;
     for (let i = 0; i < state.appointments.length; i++) {
       const a = state.appointments[i];
       if (a.status === 'waiting' || a.status === 'calling') {
-        activeIdx = i;
-        break;
+        waitingIdx = i;
+        break; // 优先级最高，找到就停
+      }
+      if (confirmedIdx < 0 && a.status === 'confirmed') {
+        confirmedIdx = i;
+        // 继续找，可能后面有 waiting/calling
       }
     }
 
-    // 如果没有 waiting/calling，找最新的 confirmed 当作正在候诊
-    if (activeIdx < 0 && activeAppts.length > 0) {
-      const latestConfirmed = activeAppts.find(a => a.status === 'confirmed');
-      if (latestConfirmed) {
-        activeIdx = state.appointments.findIndex(a => a.id === latestConfirmed.id);
-      }
-    }
-
+    const activeIdx = waitingIdx >= 0 ? waitingIdx : confirmedIdx;
     if (activeIdx >= 0) {
       const appt = state.appointments[activeIdx];
       // 如果还没分配序号，自动分配

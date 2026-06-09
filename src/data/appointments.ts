@@ -8,7 +8,7 @@ export const appointments: Appointment[] = [
     departmentName: '无痛胃镜检查',
     category: 'gastro',
     examinationType: 'painless',
-    date: '2026-06-10',
+    date: '2026-06-05',
     timeSlot: '08:30-09:00',
     patientInfo: {
       name: '张三',
@@ -23,11 +23,13 @@ export const appointments: Appointment[] = [
       relation: '配偶'
     },
     fastingConfirmed: true,
-    status: 'waiting',
+    status: 'completed',
     queueNumber: 12,
-    currentNumber: 7,
-    createdAt: '2026-06-08 14:30:00',
-    price: 780
+    currentNumber: 12,
+    createdAt: '2026-06-04 14:30:00',
+    price: 780,
+    rating: 5,
+    comment: '非常好的就诊体验，医生很耐心！'
   },
   {
     id: 'apt_002',

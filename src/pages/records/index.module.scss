@@ -231,6 +231,25 @@
     background: $color-tag-colon-bg;
     color: $color-success;
   }
+
+  &.reports {
+    background: rgba(25, 137, 250, 0.08);
+    color: $color-primary;
+    cursor: pointer;
+    transition: background $transition-fast;
+
+    &:active {
+      background: rgba(25, 137, 250, 0.18);
+    }
+  }
+}
+
+.ratingText {
+  text-align: center;
+  font-size: 24rpx;
+  color: #8C8C8C;
+  margin-bottom: $spacing-lg;
+  font-weight: $font-weight-medium;
 }
 
 .ratingBox {
@@ -484,5 +503,10 @@
   &.confirm {
     background: $color-primary;
     color: $color-text-white;
+  }
+
+  &.disabled {
+    opacity: 0.6;
+    pointer-events: none;
   }
 }

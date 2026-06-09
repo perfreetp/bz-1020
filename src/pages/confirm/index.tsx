@@ -71,6 +71,29 @@ const ConfirmPage: React.FC = () => {
 
   const genReportId = () => `rpt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
+  // 从路径提取文件名和扩展名
+  const extractFileNameFromPath = (filePath: string, fallbackIdx: number): string => {
+    if (!filePath) return `既往报告_${Date.now()}_${fallbackIdx}.jpg`;
+    try {
+      // 去掉 ?query 参数
+      const cleanPath = filePath.split('?')[0];
+      // 取最后一段
+      const segments = cleanPath.split(/[\\/]/);
+      const lastSegment = segments[segments.length - 1];
+      // 如果看起来有扩展名就直接用
+      if (lastSegment && /\.(jpg|jpeg|png|gif|webp|bmp|pdf|doc|docx)$/i.test(lastSegment)) {
+        if (lastSegment.length < 40) return lastSegment;
+        // 太长就截断保留扩展名
+        const ext = lastSegment.slice(lastSegment.lastIndexOf('.'));
+        return `报告文件_${Date.now().toString().slice(-6)}${ext}`;
+      }
+      // 没有扩展名，默认 .jpg
+      return `既往报告_${Date.now()}_${fallbackIdx}.jpg`;
+    } catch {
+      return `既往报告_${Date.now()}_${fallbackIdx}.jpg`;
+    }
+  };
+
   const handleUpload = async () => {
     console.log('[Confirm] Upload file clicked');
     if (uploadedFiles.length >= 6) {
@@ -90,19 +113,27 @@ const ConfirmPage: React.FC = () => {
           sizeType: ['compressed'],
           sourceType: ['album', 'camera']
         });
-        const newFiles: UploadedReport[] = res.tempFiles.map((f) => ({
-          id: genReportId(),
-          name: `既往报告_${Date.now()}_${Math.random().toString(36).slice(2, 5)}.jpg`,
-          path: f.path,
-          size: formatFileSize(f.size),
-          type: 'image',
-          preview: f.path
-        }));
+        const newFiles: UploadedReport[] = res.tempFiles.map((f, idx) => {
+          // 优先使用原始文件名（如果 tempFile 上有 name 字段）
+          // 否则从 path 提取，最后 fallback
+          const rawName: any = (f as any).name;
+          const fileName = typeof rawName === 'string' && rawName.length > 0
+            ? rawName
+            : extractFileNameFromPath(f.path, idx);
+          return {
+            id: genReportId(),
+            name: fileName,
+            path: f.path,
+            size: formatFileSize(f.size),
+            type: 'image',
+            preview: f.path
+          };
+        });
         const merged = [...uploadedFiles, ...newFiles];
         setUploadedFiles(merged);
         // 同步到 Context
         newFiles.forEach(f => dispatch({ type: 'ADD_REPORT', payload: f }));
-        console.log('[Confirm] Image uploaded:', newFiles);
+        console.log('[Confirm] Image uploaded:', newFiles.map(f => f.name));
         Taro.showToast({ title: `已上传${newFiles.length}张图片`, icon: 'success' });
       } else {
         // 选择文件 - 小程序端调 chooseMessageFile
