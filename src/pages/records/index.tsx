@@ -3,17 +3,20 @@ import { View, Text, ScrollView, Textarea } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import classnames from 'classnames';
 import styles from './index.module.scss';
-import { appointments } from '@/data/appointments';
 import { formatDisplayDate, getStatusText } from '@/utils/date';
-import { Appointment } from '@/types/appointment';
+import { Appointment, Department } from '@/types/appointment';
+import { useApp } from '@/store/AppContext';
+import { departments } from '@/data/departments';
 
 const RecordsPage: React.FC = () => {
-  const [apptList] = useState<Appointment[]>(appointments);
+  const { state, dispatch } = useApp();
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [ratingAppt, setRatingAppt] = useState<Appointment | null>(null);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
+
+  const apptList = state.appointments;
 
   const filterOptions = [
     { key: 'all', label: '全部' },
@@ -52,12 +55,18 @@ const RecordsPage: React.FC = () => {
         confirmColor: '#FF3B30',
         success: (res) => {
           if (res.confirm) {
+            dispatch({ type: 'CANCEL_APPOINTMENT', payload: appt.id });
             Taro.showToast({ title: '取消成功', icon: 'success' });
           }
         }
       });
     } else if (action === 'reschedule') {
-      Taro.navigateTo({ url: '/pages/calendar/index' });
+      const dept: Department | undefined = departments.find(d => d.id === appt.departmentId) || departments[0];
+      dispatch({ type: 'SET_SELECTED_DEPARTMENT', payload: dept || null });
+      dispatch({ type: 'SET_SELECTED_DATE', payload: appt.date });
+      dispatch({ type: 'SET_SELECTED_SLOT', payload: appt.timeSlot });
+      dispatch({ type: 'START_RESCHEDULE', payload: appt.id });
+      Taro.navigateTo({ url: '/pages/calendar/index?mode=reschedule' });
     } else if (action === 'waiting') {
       Taro.switchTab({ url: '/pages/waiting/index' });
     } else if (action === 'report') {
@@ -69,8 +78,8 @@ const RecordsPage: React.FC = () => {
       });
     } else if (action === 'rate') {
       setRatingAppt(appt);
-      setRating(5);
-      setComment('');
+      setRating(appt.rating || 5);
+      setComment(appt.comment || '');
       setShowRatingModal(true);
     } else if (action === 'detail') {
       Taro.showToast({ title: '查看详情', icon: 'none' });
@@ -78,20 +87,25 @@ const RecordsPage: React.FC = () => {
   };
 
   const handleSubmitRating = () => {
-    console.log(`[Records] Submit rating: ${rating} for ${ratingAppt?.orderNo}`);
+    if (!ratingAppt) return;
+    console.log(`[Records] Submit rating: ${rating} for ${ratingAppt.orderNo}`);
     Taro.showLoading({ title: '提交中...' });
     setTimeout(() => {
+      dispatch({
+        type: 'RATE_APPOINTMENT',
+        payload: { id: ratingAppt.id, rating, comment }
+      });
       Taro.hideLoading();
       Taro.showToast({ title: '评价成功', icon: 'success' });
       setShowRatingModal(false);
-    }, 800);
+    }, 600);
   };
 
   const renderStars = (num: number, interactive = false, onSelect?: (n: number) => void) => {
     return [...Array(5)].map((_, i) => (
       <Text
         key={i}
-        className={classnames(interactive ? styles.star : undefined, i < num && (interactive ? styles.active : undefined))}
+        className={classnames(interactive ? styles.star : undefined, i < num && (interactive ? styles.active : undefined)}
         onClick={() => interactive && onSelect?.(i + 1)}
       >★</Text>
     ));
@@ -103,8 +117,10 @@ const RecordsPage: React.FC = () => {
         <View className={styles.profileContent}>
           <View className={styles.avatar}>👤</View>
           <View className={styles.profileInfo}>
-            <View className={styles.name}>张三</View>
-            <View className={styles.meta}>男 · 45岁 · 138****5678</View>
+            <View className={styles.name}>{state.patientInfo.name}</View>
+            <View className={styles.meta}>
+              {state.patientInfo.gender === 'male' ? '男' : '女'} · {state.patientInfo.age}岁 · {state.patientInfo.phone}
+            </View>
             <View className={styles.meta}>就诊卡号：202601000123</View>
           </View>
         </View>
@@ -179,6 +195,9 @@ const RecordsPage: React.FC = () => {
                   )}
                   {appt.companionInfo && (
                     <View className={styles.tag}>有陪同</View>
+                  )}
+                  {appt.previousReports && appt.previousReports.length > 0 && (
+                    <View className={styles.tag}>已上传报告</View>
                   )}
                 </View>
 

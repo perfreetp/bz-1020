@@ -5,9 +5,11 @@ import classnames from 'classnames';
 import styles from './index.module.scss';
 import { departments } from '@/data/departments';
 import { Department } from '@/types/appointment';
+import { useApp } from '@/store/AppContext';
 
 const DepartmentPage: React.FC = () => {
   const router = useRouter();
+  const { state, dispatch } = useApp();
   const [activeTab, setActiveTab] = useState<'all' | 'gastro' | 'colon'>('all');
 
   useEffect(() => {
@@ -34,7 +36,10 @@ const DepartmentPage: React.FC = () => {
 
   const handleSelect = (item: Department) => {
     console.log(`[Department] Selected: ${item.id} - ${item.name}`);
-    Taro.setStorageSync('selectedDepartment', item);
+    dispatch({ type: 'SET_SELECTED_DEPARTMENT', payload: item });
+    dispatch({ type: 'SET_SELECTED_DATE', payload: '' });
+    dispatch({ type: 'SET_SELECTED_SLOT', payload: '' });
+    dispatch({ type: 'CLEAR_REPORTS' });
     Taro.navigateTo({ url: `/pages/calendar/index?deptId=${item.id}` });
   };
 

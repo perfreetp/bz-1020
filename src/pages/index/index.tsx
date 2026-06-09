@@ -1,19 +1,35 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, ScrollView } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import classnames from 'classnames';
 import styles from './index.module.scss';
-import { appointments, currentWaitingInfo } from '@/data/appointments';
-import { messages } from '@/data/messages';
 import { formatDisplayDate, getStatusText } from '@/utils/date';
-import { Appointment } from '@/types/appointment';
+import { useApp } from '@/store/AppContext';
+import { departments } from '@/data/departments';
 
 const IndexPage: React.FC = () => {
-  const [apptList] = useState<Appointment[]>(appointments);
-  const [unreadCount] = useState(messages.filter(m => !m.read).length);
+  const { state, dispatch } = useApp();
+  const apptList = state.appointments;
+  const unreadCount = state.messages.filter(m => !m.read).length;
 
-  const latestAppt = apptList.find(a => a.status === 'waiting' || a.status === 'calling' || a.status === 'confirmed')
-    || apptList.find(a => a.status === 'completed');
+  const latestAppt = useMemo(() => {
+    const active = apptList.find(a =>
+      a.status === 'waiting' || a.status === 'calling' || a.status === 'confirmed'
+    );
+    return active || apptList.find(a => a.status === 'completed') || null;
+  }, [apptList]);
+
+  const currentWaitingInfo = useMemo(() => {
+    if (latestAppt && (latestAppt.status === 'waiting' || latestAppt.status === 'calling')) {
+      const currentNum = latestAppt.currentNumber || 7;
+      return {
+        currentNumber: currentNum,
+        aheadCount: Math.max(0, (latestAppt.queueNumber || 12) - currentNum),
+        queueNumber: latestAppt.queueNumber || 12
+      };
+    }
+    return null;
+  }, [latestAppt]);
 
   const handleNavigate = (url: string, type: 'navigate' | 'switchTab' = 'navigate') => {
     console.log(`[Home] Navigate to: ${url}`);
@@ -26,6 +42,7 @@ const IndexPage: React.FC = () => {
 
   const handleQuickAppoint = (category?: 'gastro' | 'colon') => {
     console.log(`[Home] Quick appoint, category: ${category}`);
+    dispatch({ type: 'CLEAR_REPORTS' });
     const params = category ? `?category=${category}` : '';
     Taro.navigateTo({ url: `/pages/department/index${params}` });
   };
@@ -97,7 +114,7 @@ const IndexPage: React.FC = () => {
                 </View>
               </View>
 
-              {(latestAppt.status === 'waiting' || latestAppt.status === 'calling') && currentWaitingInfo && (
+              {currentWaitingInfo && (
                 <View className={styles.queueInfo}>
                   <View className={styles.queueItem}>
                     <View className={styles.num}>{currentWaitingInfo.currentNumber}</View>
@@ -124,14 +141,21 @@ const IndexPage: React.FC = () => {
                 )}
                 {latestAppt.status === 'confirmed' && (
                   <>
-                    <View className={styles.btnOutline} onClick={() => handleNavigate('/pages/calendar/index')}>改期</View>
+                    <View className={styles.btnOutline} onClick={() => {
+                      const dept = departments.find(d => d.id === latestAppt.departmentId) || departments[0];
+                      dispatch({ type: 'SET_SELECTED_DEPARTMENT', payload: dept });
+                      dispatch({ type: 'SET_SELECTED_DATE', payload: latestAppt.date });
+                      dispatch({ type: 'SET_SELECTED_SLOT', payload: latestAppt.timeSlot });
+                      dispatch({ type: 'START_RESCHEDULE', payload: latestAppt.id });
+                      Taro.navigateTo({ url: '/pages/calendar/index?mode=reschedule' });
+                    }}>改期</View>
                     <View className={styles.btnPrimary} onClick={() => handleNavigate('/pages/instructions/index', 'switchTab')}>
                       术前准备
                     </View>
                   </>
                 )}
                 {latestAppt.status === 'completed' && !latestAppt.rating && (
-                  <View className={styles.btnPrimary}>立即评价</View>
+                  <View className={styles.btnPrimary} onClick={() => handleNavigate('/pages/records/index')}>立即评价</View>
                 )}
               </View>
             </View>

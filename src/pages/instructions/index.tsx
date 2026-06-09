@@ -5,11 +5,14 @@ import classnames from 'classnames';
 import styles from './index.module.scss';
 import { colonPreparationSteps, gastroPreparationSteps, generalPrecautions } from '@/data/messages';
 import { PreparationStep } from '@/types/appointment';
+import { useApp } from '@/store/AppContext';
 
 const InstructionsPage: React.FC = () => {
+  const { state, dispatch } = useApp();
   const [activeCategory, setActiveCategory] = useState<'colon' | 'gastro' | 'general'>('colon');
-  const [companionName, setCompanionName] = useState('张妻');
-  const [companionPhone, setCompanionPhone] = useState('139****9876');
+  const [companionName, setCompanionName] = useState(state.companionInfo.name);
+  const [companionPhone, setCompanionPhone] = useState(state.companionInfo.phone);
+  const [companionRelation, setCompanionRelation] = useState(state.companionInfo.relation);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const faqList = [
@@ -18,6 +21,8 @@ const InstructionsPage: React.FC = () => {
     { q: '检查后多久可以进食？', a: '普通胃肠镜检查后2小时可吃温凉流质；无痛检查需完全清醒后（1-2小时）先饮水无呛咳再进食；取活检或息肉摘除者需遵医嘱延长禁食时间。' },
     { q: '做了肠镜后腹胀怎么办？', a: '这是正常现象，因为检查时向肠腔内注气便于观察。建议多走动，按顺时针方向轻揉腹部，一般数小时后会逐渐缓解，如有剧烈腹痛请及时就医。' }
   ];
+
+  const relations = ['配偶', '子女', '父母', '朋友', '其他'];
 
   const getSteps = (): PreparationStep[] => {
     if (activeCategory === 'colon') return colonPreparationSteps;
@@ -43,9 +48,11 @@ const InstructionsPage: React.FC = () => {
       Taro.showToast({ title: '请完善陪同人信息', icon: 'none' });
       return;
     }
-    console.log(`[Instructions] Save companion: ${companionName} ${companionPhone}`);
-    Taro.setStorageSync('companionName', companionName);
-    Taro.setStorageSync('companionPhone', companionPhone);
+    console.log(`[Instructions] Save companion: ${companionName} ${companionPhone} ${companionRelation}`);
+    dispatch({
+      type: 'SET_COMPANION_INFO',
+      payload: { name: companionName, phone: companionPhone, relation: companionRelation }
+    });
     Taro.showToast({ title: '保存成功', icon: 'success' });
   };
 
@@ -183,6 +190,21 @@ const InstructionsPage: React.FC = () => {
               onInput={(e) => setCompanionPhone(e.detail.value)}
               style={{ flex: 1 }}
             />
+          </View>
+        </View>
+
+        <View className={styles.formGroup}>
+          <View className={styles.formLabel}>与患者关系</View>
+          <View className={styles.relationPicker}>
+            {relations.map((r) => (
+              <View
+                key={r}
+                className={classnames(styles.relationTag, companionRelation === r && styles.active)}
+                onClick={() => setCompanionRelation(r)}
+              >
+                {r}
+              </View>
+            ))}
           </View>
         </View>
 

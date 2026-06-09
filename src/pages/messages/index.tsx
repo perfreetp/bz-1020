@@ -3,14 +3,16 @@ import { View, Text, ScrollView } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import classnames from 'classnames';
 import styles from './index.module.scss';
-import { messages } from '@/data/messages';
 import { formatDateTime } from '@/utils/date';
 import { MessageItem } from '@/types/appointment';
+import { useApp } from '@/store/AppContext';
 
 const MessagesPage: React.FC = () => {
-  const [msgList, setMsgList] = useState<MessageItem[]>(messages);
+  const { state, dispatch } = useApp();
   const [activeTab, setActiveTab] = useState<string>('all');
   const [showDetail, setShowDetail] = useState<MessageItem | null>(null);
+
+  const msgList = state.messages;
 
   const typeConfig = {
     calling: { label: '叫号通知', icon: '🔔', class: 'calling' },
@@ -44,7 +46,7 @@ const MessagesPage: React.FC = () => {
   }, [msgList, activeTab]);
 
   const markAsRead = (id: string) => {
-    setMsgList(prev => prev.map(m => m.id === id ? { ...m, read: true } : m));
+    dispatch({ type: 'MARK_MESSAGE_READ', payload: id });
   };
 
   const handleMessageClick = (msg: MessageItem) => {
@@ -78,7 +80,7 @@ const MessagesPage: React.FC = () => {
       content: '确定将所有消息标记为已读吗？',
       success: (res) => {
         if (res.confirm) {
-          setMsgList(prev => prev.map(m => ({ ...m, read: true })));
+          dispatch({ type: 'MARK_ALL_MESSAGES_READ' });
           Taro.showToast({ title: '已全部标记', icon: 'success' });
         }
       }
@@ -101,7 +103,7 @@ const MessagesPage: React.FC = () => {
         );
       case 'appointment':
         return (
-          <View className={styles.btnPrimary} onClick={(e) => handleMessageAction('confirm', msg, e)}>
+          <View className={styles.btnPrimary} onClick={(e) => handleMessageAction('record', msg, e)}>
             查看预约
           </View>
         );

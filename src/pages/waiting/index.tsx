@@ -1,33 +1,80 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, ScrollView } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import classnames from 'classnames';
 import styles from './index.module.scss';
-import { appointments, currentWaitingInfo } from '@/data/appointments';
 import { formatDisplayDate } from '@/utils/date';
-import { Appointment, WaitingInfo } from '@/types/appointment';
+import { Appointment } from '@/types/appointment';
+import { useApp } from '@/store/AppContext';
 
 const WaitingPage: React.FC = () => {
-  const [waitingInfo, setWaitingInfo] = useState<WaitingInfo | null>(currentWaitingInfo);
-  const [currentAppt, setCurrentAppt] = useState<Appointment | null>(null);
+  const { state, dispatch } = useApp();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  const { currentAppt, waitingIndex } = useMemo(() => {
+    // 优先找 waiting/calling 状态的
+    const active = state.appointments.findIndex(a =>
+      a.status === 'waiting' || a.status === 'calling'
+    );
+    if (active >= 0) {
+      // 如果还没分配序号，自动分配一个
+      const appt = state.appointments[active];
+      if (!appt.queueNumber) {
+        return { currentAppt: { ...appt, queueNumber: 12 + active, currentNumber: 7 }, waitingIndex: active };
+      }
+      return { currentAppt: appt, waitingIndex: active };
+    }
+    return { currentAppt: null, waitingIndex: -1 };
+  }, [state.appointments]);
+
+  const waitingInfo = useMemo(() => {
+    if (!currentAppt) return null;
+    const queueNumber = currentAppt.queueNumber || 12;
+    const currentNumber = currentAppt.currentNumber || 7;
+    return {
+      appointmentId: currentAppt.id,
+      departmentName: currentAppt.departmentName,
+      queueNumber,
+      currentNumber,
+      aheadCount: Math.max(0, queueNumber - currentNumber),
+      estimatedTime: `${Math.max(0, queueNumber - currentNumber) * 8}分钟`,
+      roomNo: '内镜室-' + ((waitingIndex % 5) + 1),
+      status: 'waiting' as const,
+      qrCode: `${currentAppt.orderNo}|${queueNumber}`
+    };
+  }, [currentAppt, waitingIndex]);
+
   useEffect(() => {
-    const waiting = appointments.find(a => a.status === 'waiting' || a.status === 'calling');
-    setCurrentAppt(waiting || null);
-    console.log(`[Waiting] Current appointment: ${waiting?.id || 'none'}`);
-  }, []);
+    console.log(`[Waiting] Current active appointment: ${currentAppt?.id || 'none'}`);
+  }, [currentAppt]);
 
   const handleRefresh = () => {
-    console.log('[Waiting] Refresh queue');
+    if (!currentAppt || !waitingInfo) return;
+    console.log('[Waiting] Refresh queue for appt:', currentAppt.id);
     setIsRefreshing(true);
     setTimeout(() => {
-      if (waitingInfo && waitingInfo.currentNumber < waitingInfo.queueNumber - 1) {
-        setWaitingInfo({
-          ...waitingInfo,
-          currentNumber: waitingInfo.currentNumber + 1,
-          aheadCount: Math.max(0, waitingInfo.aheadCount - 1)
+      if (waitingInfo.currentNumber < waitingInfo.queueNumber - 1) {
+        const newCurrent = waitingInfo.currentNumber + 1;
+        dispatch({
+          type: 'UPDATE_APPOINTMENT',
+          payload: {
+            id: currentAppt.id,
+            changes: { currentNumber: newCurrent }
+          }
         });
+        // 如果只剩2位，发送叫号临近提醒
+        if (waitingInfo.queueNumber - newCurrent <= 2) {
+          const nearMsg = {
+            id: `msg_near_${Date.now()}`,
+            type: 'calling' as const,
+            title: '叫号临近提醒',
+            content: `您的${currentAppt.departmentName}还有${waitingInfo.queueNumber - newCurrent}位就到了，请前往${waitingInfo.roomNo}门口等候，不要离开候诊区太远哦～`,
+            time: new Date().toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\//g, '-'),
+            read: false,
+            appointmentId: currentAppt.id
+          };
+          dispatch({ type: 'ADD_MESSAGE', payload: nearMsg });
+        }
       }
       setIsRefreshing(false);
       Taro.showToast({ title: '已更新', icon: 'success' });
@@ -42,13 +89,13 @@ const WaitingPage: React.FC = () => {
       Taro.makePhoneCall({ phoneNumber: '021-12345678' }).catch(e => console.error(e));
     } else if (action === 'cancel') {
       Taro.showModal({
-        title: '过号说明',
+        title: '过号处理说明',
         content: '如未听到叫号，请立即前往候诊区护士台咨询，护士会帮您重新安排号序，不要直接进入诊室哦。',
         showCancel: false,
         confirmText: '知道了'
       });
     } else if (action === 'nearby') {
-      Taro.showToast({ title: '附近餐饮正在加载...', icon: 'none' });
+      Taro.showToast({ title: '附近餐饮加载中...', icon: 'none' });
     }
   };
 
@@ -64,9 +111,19 @@ const WaitingPage: React.FC = () => {
           <View className={styles.emptyCard}>
             <View className={styles.icon}>🕐</View>
             <View className={styles.title}>暂无正在候诊的预约</View>
-            <View className={styles.desc}>您可以在首页查看预约记录或立即预约</View>
-            <View className={styles.btn} onClick={() => Taro.switchTab({ url: '/pages/index/index' })}>
-              前往首页
+            <View className={styles.desc}>
+              {state.appointments.length > 0
+                ? '您可以在个人记录查看预约，或进行签到后在此查看候诊队列'
+                : '您可以在首页立即预约检查，预约成功后在此查看候诊'}
+            </View>
+            <View className={styles.btn} onClick={() => {
+              if (state.appointments.length > 0) {
+                Taro.navigateTo({ url: '/pages/records/index' });
+              } else {
+                Taro.switchTab({ url: '/pages/index/index' });
+              }
+            }}>
+              {state.appointments.length > 0 ? '查看我的预约' : '去预约检查'}
             </View>
           </View>
         </View>
@@ -74,7 +131,7 @@ const WaitingPage: React.FC = () => {
     );
   }
 
-  const isCalling = waitingInfo.status === 'calling' || waitingInfo.aheadCount <= 2;
+  const isCalling = waitingInfo.aheadCount <= 0;
   const isNear = waitingInfo.aheadCount <= 3 && waitingInfo.aheadCount > 0;
 
   return (
@@ -141,7 +198,7 @@ const WaitingPage: React.FC = () => {
           </View>
         )}
 
-        {isNear && waitingInfo.aheadCount > 0 && (
+        {isNear && !isCalling && (
           <View className={styles.tipCard}>
             <View className={styles.tipHeader}>
               <Text className={styles.icon}>⏰</Text>

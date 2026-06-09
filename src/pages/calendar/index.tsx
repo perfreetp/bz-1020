@@ -6,24 +6,34 @@ import styles from './index.module.scss';
 import { departments } from '@/data/departments';
 import { generateCalendarDays, generateTimeSlots, formatDisplayDate } from '@/utils/date';
 import { CalendarDay, TimeSlot, Department } from '@/types/appointment';
+import { useApp } from '@/store/AppContext';
 
 const CalendarPage: React.FC = () => {
   const router = useRouter();
+  const { state, dispatch } = useApp();
   const [calendarDays] = useState<CalendarDay[]>(generateCalendarDays());
-  const [selectedDate, setSelectedDate] = useState<string>('');
+
+  const isRescheduleMode = !!state.reschedulingAppointmentId || router.params.mode === 'reschedule';
+
+  const department: Department | null = useMemo(() => {
+    if (state.selectedDepartment) return state.selectedDepartment;
+    const deptId = router.params.deptId;
+    return departments.find(d => d.id === deptId) || departments[3];
+  }, [state.selectedDepartment, router.params.deptId]);
+
+  const [selectedDate, setSelectedDate] = useState<string>(state.selectedDate);
   const [selectedSlot, setSelectedSlot] = useState<string>('');
-  const [department, setDepartment] = useState<Department | null>(null);
 
   useEffect(() => {
-    const deptId = router.params.deptId;
-    const cached = Taro.getStorageSync('selectedDepartment');
-    const dept = cached || departments.find(d => d.id === deptId);
-    if (dept) setDepartment(dept);
-    console.log(`[Calendar] Department loaded: ${dept?.name}`);
-
     const available = calendarDays.find(d => d.available);
-    if (available) setSelectedDate(available.date);
-  }, [router.params, calendarDays]);
+    if (!selectedDate && available) {
+      setSelectedDate(available.date);
+    }
+    if (department) {
+      dispatch({ type: 'SET_SELECTED_DEPARTMENT', payload: department });
+    }
+    console.log(`[Calendar] Mode: ${isRescheduleMode ? '改期' : '新建'}, Department: ${department?.name}, 无痛? ${department?.name.includes('无痛')}`);
+  }, [calendarDays, selectedDate, department, dispatch, isRescheduleMode]);
 
   const timeSlots = useMemo(() => {
     if (!selectedDate) return [];
@@ -41,22 +51,45 @@ const CalendarPage: React.FC = () => {
     if (!day.available) return;
     setSelectedDate(day.date);
     setSelectedSlot('');
+    dispatch({ type: 'SET_SELECTED_DATE', payload: day.date });
+    dispatch({ type: 'SET_SELECTED_SLOT', payload: '' });
     console.log(`[Calendar] Date selected: ${day.date}`);
   };
 
   const handleSlotSelect = (slot: TimeSlot) => {
     if (slot.available <= 0) return;
     setSelectedSlot(slot.id);
+    const slotText = `${slot.startTime}-${slot.endTime}`;
+    dispatch({ type: 'SET_SELECTED_SLOT', payload: slotText });
     console.log(`[Calendar] Slot selected: ${slot.startTime}-${slot.endTime}`);
   };
 
   const handleSubmit = () => {
     if (!selectedDate || !selectedSlotData) return;
-    const slotText = `${selectedSlotData.startTime}-${selectedSlotData.endTime}`;
-    Taro.setStorageSync('selectedDate', selectedDate);
-    Taro.setStorageSync('selectedSlot', slotText);
-    console.log(`[Calendar] Submit: ${selectedDate} ${slotText}`);
-    Taro.navigateTo({ url: '/pages/confirm/index' });
+    const slotFullText = `${selectedSlotData.startTime}-${selectedSlotData.endTime}`;
+    dispatch({ type: 'SET_SELECTED_DATE', payload: selectedDate });
+    dispatch({ type: 'SET_SELECTED_SLOT', payload: slotFullText });
+
+    if (isRescheduleMode && state.reschedulingAppointmentId) {
+      const apptId = state.reschedulingAppointmentId;
+      const originalAppt = state.appointments.find(a => a.id === apptId);
+      console.log(`[Calendar] Reschedule: ${apptId} -> ${selectedDate} ${slotFullText}`);
+      Taro.showLoading({ title: '改期中...' });
+      setTimeout(() => {
+        dispatch({
+          type: 'RESCHEDULE_APPOINTMENT',
+          payload: { id: apptId, date: selectedDate, slot: slotFullText }
+        });
+        Taro.hideLoading();
+        Taro.showToast({ title: '改期成功', icon: 'success' });
+        setTimeout(() => {
+          Taro.navigateBack();
+        }, 800);
+      }, 600);
+    } else {
+      console.log(`[Calendar] New appointment: ${selectedDate} ${slotFullText}`);
+      Taro.navigateTo({ url: '/pages/confirm/index' });
+    }
   };
 
   const getRemainClass = (remain: number) => {
@@ -65,14 +98,34 @@ const CalendarPage: React.FC = () => {
     return '';
   };
 
+  const isPainlessByDefault = department?.name.includes('无痛') || department?.name.includes('联合');
+
   return (
     <View className={styles.page}>
       {department && (
         <View className={styles.deptBar}>
-          <View className={styles.name}>{department.name}</View>
-          <View className={styles.meta}>
-            {department.examinationType === 'painless' ? '无痛检查' : '普通检查'} · 约{department.duration}分钟 · ¥{department.price}
+          <View className={styles.name}>
+            {isRescheduleMode && <Text style={{ color: '#FF9500', marginRight: 12 }}>【改期】</Text>}
+            {department.name}
           </View>
+          <View className={styles.meta}>
+            {isPainlessByDefault ? '无痛检查' : '普通/无痛可选'} · 约{department.duration}分钟 · ¥{department.price}
+          </View>
+        </View>
+      )}
+
+      {isRescheduleMode && (
+        <View style={{
+          margin: '20rpx 24rpx 0',
+          padding: '20rpx 24rpx',
+          background: 'rgba(255,149,0,0.08)',
+          borderRadius: 12,
+          border: '1rpx solid rgba(255,149,0,0.2)',
+          fontSize: 24,
+          color: '#8B4513',
+          lineHeight: 1.6
+        }}>
+          💡 您正在为当前预约重新选择日期和时段，选择完成后原预约时间将自动更新
         </View>
       )}
 
@@ -178,7 +231,7 @@ const CalendarPage: React.FC = () => {
           className={classnames(styles.submitBtn, (!selectedDate || !selectedSlotData) && styles.disabled)}
           onClick={handleSubmit}
         >
-          下一步
+          {isRescheduleMode ? '确认改期' : '下一步'}
         </View>
       </View>
     </View>

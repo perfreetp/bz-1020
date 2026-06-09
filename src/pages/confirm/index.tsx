@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Input } from '@tarojs/components';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, Text, ScrollView, Input, Image } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import classnames from 'classnames';
 import styles from './index.module.scss';
@@ -7,53 +7,129 @@ import { departments } from '@/data/departments';
 import StepIndicator from '@/components/StepIndicator';
 import { formatDisplayDate } from '@/utils/date';
 import { Department } from '@/types/appointment';
+import { useApp } from '@/store/AppContext';
+
+interface UploadedFile {
+  name: string;
+  path: string;
+  size: string;
+  type: 'image' | 'pdf' | 'file';
+  preview?: string;
+}
 
 const ConfirmPage: React.FC = () => {
-  const [department, setDepartment] = useState<Department | null>(null);
-  const [selectedDate] = useState(Taro.getStorageSync('selectedDate') || '2026-06-15');
-  const [selectedSlot] = useState(Taro.getStorageSync('selectedSlot') || '10:00-10:30');
+  const { state, dispatch, createAppointment } = useApp();
 
-  const [examType, setExamType] = useState<'normal' | 'painless'>('painless');
-  const [patientName, setPatientName] = useState('张三');
-  const [gender, setGender] = useState<'male' | 'female'>('male');
-  const [age, setAge] = useState('45');
-  const [phone, setPhone] = useState('138****5678');
-  const [idCard, setIdCard] = useState('320***********1234');
-  const [companionName, setCompanionName] = useState('张妻');
-  const [companionPhone, setCompanionPhone] = useState('139****9876');
-  const [companionRelation, setCompanionRelation] = useState('配偶');
-  const [uploads, setUploads] = useState<string[]>(['📄']);
+  const department: Department | null = useMemo(() => {
+    return state.selectedDepartment || departments[3];
+  }, [state.selectedDepartment]);
+
+  const selectedDate = state.selectedDate || '2026-06-15';
+  const selectedSlot = state.selectedSlot || '10:00-10:30';
+
+  const isPainlessDefault = useMemo(() => {
+    return department?.name.includes('无痛') || department?.name.includes('联合');
+  }, [department]);
+
+  const [examType, setExamType] = useState<'normal' | 'painless'>(
+    isPainlessDefault ? 'painless' : 'normal'
+  );
+
+  const [patientName, setPatientName] = useState(state.patientInfo.name);
+  const [gender, setGender] = useState<'male' | 'female'>(state.patientInfo.gender);
+  const [age, setAge] = useState(state.patientInfo.age);
+  const [phone, setPhone] = useState(state.patientInfo.phone);
+  const [idCard, setIdCard] = useState(state.patientInfo.idCard);
+  const [companionName, setCompanionName] = useState(state.companionInfo.name);
+  const [companionPhone, setCompanionPhone] = useState(state.companionInfo.phone);
+  const [companionRelation, setCompanionRelation] = useState(state.companionInfo.relation);
+
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [fastingConfirmed, setFastingConfirmed] = useState(false);
-  const [companionConfirmed, setCompanionConfirmed] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    const cached = Taro.getStorageSync('selectedDepartment');
-    const dept = cached || departments[3];
-    setDepartment(dept);
-    console.log(`[Confirm] Department: ${dept?.name}`);
-  }, []);
+    if (isPainlessDefault) setExamType('painless');
+  }, [isPainlessDefault]);
 
   const relations = ['配偶', '子女', '父母', '朋友', '其他'];
 
-  const handleUpload = () => {
-    console.log('[Confirm] Upload report clicked');
-    if (uploads.length >= 6) {
-      Taro.showToast({ title: '最多上传6张', icon: 'none' });
+  const basePrice = department?.price || 0;
+  const hasPainlessTag = isPainlessDefault;
+  const normalPrice = basePrice;
+  const painlessPrice = hasPainlessTag ? basePrice : basePrice + 460;
+
+  const totalPrice = examType === 'painless' ? painlessPrice : normalPrice;
+  const showTypePicker = !hasPainlessTag;
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  const handleUpload = async () => {
+    console.log('[Confirm] Upload file clicked');
+    if (uploadedFiles.length >= 6) {
+      Taro.showToast({ title: '最多上传6个文件', icon: 'none' });
       return;
     }
-    setUploads([...uploads, '📄']);
-    Taro.showToast({ title: '上传成功', icon: 'success' });
+
+    try {
+      const actionSheet = await Taro.showActionSheet({
+        itemList: ['选择图片', '选择文件']
+      });
+
+      if (actionSheet.tapIndex === 0) {
+        const res = await Taro.chooseImage({
+          count: 6 - uploadedFiles.length,
+          sizeType: ['compressed'],
+          sourceType: ['album', 'camera']
+        });
+        const newFiles: UploadedFile[] = await Promise.all(
+          res.tempFiles.map(async (f) => ({
+            name: `既往报告_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.jpg`,
+            path: f.path,
+            size: formatFileSize(f.size),
+            type: 'image',
+            preview: f.path
+          }))
+        );
+        setUploadedFiles([...uploadedFiles, ...newFiles]);
+        newFiles.forEach(f => dispatch({ type: 'ADD_REPORT', payload: f.name }));
+        console.log('[Confirm] Image uploaded:', newFiles);
+        Taro.showToast({ title: `已上传${newFiles.length}张图片`, icon: 'success' });
+      } else {
+        // 模拟文件选择（小程序端可使用chooseMessageFile）
+        const mockFiles: UploadedFile[] = [
+          {
+            name: `胃镜报告_${Date.now()}.pdf`,
+            path: 'mock://pdf/' + Date.now(),
+            size: '1.2 MB',
+            type: 'pdf'
+          }
+        ];
+        setUploadedFiles([...uploadedFiles, ...mockFiles]);
+        mockFiles.forEach(f => dispatch({ type: 'ADD_REPORT', payload: f.name }));
+        console.log('[Confirm] File uploaded:', mockFiles);
+        Taro.showToast({ title: '文件上传成功', icon: 'success' });
+      }
+    } catch (e) {
+      if ((e as any).errMsg !== 'showActionSheet:fail cancel') {
+        console.error('[Confirm] Upload error:', e);
+      }
+    }
   };
 
   const handleRemoveUpload = (idx: number) => {
-    setUploads(uploads.filter((_, i) => i !== idx));
+    const removed = uploadedFiles[idx];
+    setUploadedFiles(uploadedFiles.filter((_, i) => i !== idx));
+    dispatch({ type: 'REMOVE_REPORT', payload: idx });
+    console.log(`[Confirm] Removed file: ${removed.name}`);
+    Taro.showToast({ title: '已删除', icon: 'success' });
   };
 
-  const canSubmit = patientName && age && phone && fastingConfirmed;
-  const basePrice = department?.price || 0;
-  const totalPrice = examType === 'painless' && !department?.name.includes('无痛')
-    ? basePrice + 460
-    : basePrice;
+  const canSubmit = patientName && age && phone && fastingConfirmed && !submitting;
 
   const handleSubmit = () => {
     if (!canSubmit) {
@@ -65,21 +141,73 @@ const ConfirmPage: React.FC = () => {
       return;
     }
 
-    console.log('[Confirm] Submit appointment');
-    Taro.showLoading({ title: '提交中...' });
+    if (!department) {
+      Taro.showToast({ title: '未选择检查项目', icon: 'none' });
+      return;
+    }
+
+    setSubmitting(true);
+    console.log('[Confirm] Submit appointment, reports:', uploadedFiles.map(f => f.name));
+    Taro.showLoading({ title: '提交预约中...' });
+
+    // 更新患者信息和陪同信息到全局状态
+    dispatch({ type: 'SET_PATIENT_INFO', payload: {
+      name: patientName,
+      gender,
+      age,
+      phone,
+      idCard
+    }});
+    dispatch({ type: 'SET_COMPANION_INFO', payload: {
+      name: companionName,
+      phone: companionPhone,
+      relation: companionRelation
+    }});
 
     setTimeout(() => {
-      Taro.hideLoading();
-      Taro.showModal({
-        title: '预约成功',
-        content: `您已成功预约：${department?.name}\n时间：${formatDisplayDate(selectedDate)} ${selectedSlot}\n请提前做好检查前准备。`,
-        showCancel: false,
-        confirmText: '知道了',
-        success: () => {
-          Taro.switchTab({ url: '/pages/index/index' });
-        }
-      });
-    }, 1000);
+      try {
+        const newAppt = createAppointment({
+          departmentId: department.id,
+          departmentName: department.name,
+          category: department.category,
+          examinationType: examType,
+          date: selectedDate,
+          slot: selectedSlot,
+          price: totalPrice,
+          duration: department.duration,
+          reports: uploadedFiles.map(f => f.name),
+          companion: (examType === 'painless' && companionName && companionPhone)
+            ? { name: companionName, phone: companionPhone, relation: companionRelation }
+            : null,
+          fastingConfirmed
+        });
+
+        Taro.hideLoading();
+        Taro.showModal({
+          title: '🎉 预约成功',
+          content:
+`预约编号：${newAppt.orderNo}
+检查项目：${newAppt.departmentName}
+检查方式：${examType === 'painless' ? '无痛检查' : '普通检查'}
+检查时间：${formatDisplayDate(selectedDate)} ${selectedSlot}
+检查费用：¥${totalPrice}
+
+请按要求做好检查前准备，
+建议提前30分钟到院报到。`,
+          showCancel: false,
+          confirmText: '去首页查看',
+          success: () => {
+            setSubmitting(false);
+            Taro.switchTab({ url: '/pages/index/index' });
+          }
+        });
+      } catch (e) {
+        console.error('[Confirm] Submit error:', e);
+        Taro.hideLoading();
+        Taro.showToast({ title: '提交失败，请重试', icon: 'error' });
+        setSubmitting(false);
+      }
+    }, 1200);
   };
 
   return (
@@ -106,53 +234,79 @@ const ConfirmPage: React.FC = () => {
             <Text className={styles.label}>检查时长</Text>
             <Text className={styles.value}>约{department?.duration || 40}分钟</Text>
           </View>
+          <View className={styles.row}>
+            <Text className={styles.label}>检查科室</Text>
+            <Text className={styles.value}>消化内镜中心</Text>
+          </View>
         </View>
       </View>
 
-      <View className={styles.section}>
-        <View className={styles.sectionHeader}>
-          <View className={styles.icon}>💉</View>
-          <Text className={styles.title}>检查方式</Text>
-          <Text className={styles.required}>*</Text>
-        </View>
-        <View className={styles.typePicker}>
-          <View
-            className={classnames(styles.typeCard, examType === 'normal' && styles.active)}
-            onClick={() => setExamType('normal')}
-          >
-            <View className={styles.check}>✓</View>
-            <View className={styles.icon}>🔬</View>
-            <View className={styles.name}>普通检查</View>
-            <View className={styles.desc}>清醒状态，无麻醉风险</View>
-            <View className={styles.price}>
-              <Text className={styles.currency}>¥</Text>
-              {basePrice}
+      {showTypePicker && (
+        <View className={styles.section}>
+          <View className={styles.sectionHeader}>
+            <View className={styles.icon}>💉</View>
+            <Text className={styles.title}>检查方式</Text>
+            <Text className={styles.required}>*</Text>
+          </View>
+          <View className={styles.typePicker}>
+            <View
+              className={classnames(styles.typeCard, examType === 'normal' && styles.active)}
+              onClick={() => setExamType('normal')}
+            >
+              <View className={styles.check}>✓</View>
+              <View className={styles.icon}>🔬</View>
+              <View className={styles.name}>普通检查</View>
+              <View className={styles.desc}>清醒状态，无麻醉风险</View>
+              <View className={styles.price}>
+                <Text className={styles.currency}>¥</Text>
+                {normalPrice}
+              </View>
+            </View>
+            <View
+              className={classnames(styles.typeCard, examType === 'painless' && styles.active)}
+              onClick={() => setExamType('painless')}
+            >
+              <View className={styles.check}>✓</View>
+              <View className={styles.icon}>😴</View>
+              <View className={styles.name}>无痛检查</View>
+              <View className={styles.desc}>静脉麻醉，全程无痛</View>
+              <View className={styles.price}>
+                <Text className={styles.currency}>¥</Text>
+                {painlessPrice}
+              </View>
             </View>
           </View>
-          <View
-            className={classnames(styles.typeCard, examType === 'painless' && styles.active)}
-            onClick={() => setExamType('painless')}
-          >
-            <View className={styles.check}>✓</View>
-            <View className={styles.icon}>😴</View>
-            <View className={styles.name}>无痛检查</View>
-            <View className={styles.desc}>静脉麻醉，全程无痛</View>
-            <View className={styles.price}>
-              <Text className={styles.currency}>¥</Text>
-              {totalPrice}
+          {examType === 'painless' && (
+            <View style={{ fontSize: 22, color: '#FF9500', padding: '12rpx 16rpx', background: 'rgba(255,149,0,0.06)', borderRadius: 8 }}>
+              ⚠️ 无痛检查必须有家属陪同，术后24小时禁止驾驶车辆
             </View>
+          )}
+        </View>
+      )}
+
+      {!showTypePicker && (
+        <View className={styles.section}>
+          <View className={styles.sectionHeader}>
+            <View className={styles.icon}>💉</View>
+            <Text className={styles.title}>检查方式</Text>
+          </View>
+          <View style={{
+            padding: 24,
+            background: 'rgba(175, 82, 222, 0.08)',
+            borderRadius: 12,
+            border: '1rpx solid rgba(175, 82, 222, 0.2)',
+            fontSize: 26,
+            color: '#6B21A8',
+            lineHeight: 1.6
+          }}>
+            � 本项目已包含无痛检查，按套餐价 ¥{basePrice} 收取
           </View>
         </View>
-        {examType === 'painless' && (
-          <View style={{ fontSize: 22, color: '#FF9500', padding: '12rpx 16rpx', background: 'rgba(255,149,0,0.06)', borderRadius: 8 }}>
-            ⚠️ 无痛检查必须有家属陪同，术后24小时禁止驾驶车辆
-          </View>
-        )}
-      </View>
+      )}
 
       <View className={styles.section}>
         <View className={styles.sectionHeader}>
-          <View className={styles.icon}>👤</View>
+          <View className={styles.icon}>�👤</View>
           <Text className={styles.title}>患者信息</Text>
           <Text className={styles.required}>*</Text>
         </View>
@@ -230,7 +384,7 @@ const ConfirmPage: React.FC = () => {
           <View className={styles.formInput}>
             <Input
               value={idCard}
-              placeholder="请输入身份证号"
+              placeholder="请输入身份证号（选填）"
               placeholderClass={styles.placeholder}
               onInput={(e) => setIdCard(e.detail.value)}
               style={{ flex: 1 }}
@@ -248,7 +402,9 @@ const ConfirmPage: React.FC = () => {
           </View>
 
           <View className={styles.formGroup}>
-            <View className={styles.formLabel}>陪同人姓名</View>
+            <View className={styles.formLabel}>
+              <Text className={styles.required}>*</Text>陪同人姓名
+            </View>
             <View className={styles.formInput}>
               <Input
                 value={companionName}
@@ -261,12 +417,14 @@ const ConfirmPage: React.FC = () => {
           </View>
 
           <View className={styles.formGroup}>
-            <View className={styles.formLabel}>陪同人电话</View>
+            <View className={styles.formLabel}>
+              <Text className={styles.required}>*</Text>陪同人电话
+            </View>
             <View className={styles.formInput}>
               <Input
                 type="number"
                 value={companionPhone}
-                placeholder="请输入陪同人电话"
+                placeholder="请输入陪同人联系电话"
                 placeholderClass={styles.placeholder}
                 onInput={(e) => setCompanionPhone(e.detail.value)}
                 style={{ flex: 1 }}
@@ -297,16 +455,75 @@ const ConfirmPage: React.FC = () => {
           <Text className={styles.title}>既往报告上传</Text>
         </View>
         <View className={styles.uploadArea} onClick={handleUpload}>
-          <View className={styles.icon}>📤</View>
-          <View className={styles.title}>点击上传既往检查报告</View>
-          <View className={styles.hint}>支持 PDF、JPG、PNG 格式，最多6张</View>
+          <View className={styles.icon} style={{ fontSize: 60, marginBottom: 12, opacity: 0.7 }}>📤</View>
+          <View style={{ fontSize: 26, color: '#1a1a1a', marginBottom: 4 }}>点击上传既往检查报告</View>
+          <View style={{ fontSize: 22, color: '#8C8C8C' }}>
+            支持 图片(JPG/PNG)、PDF 格式，最多6个文件 ({uploadedFiles.length}/6)
+          </View>
         </View>
-        {uploads.length > 0 && (
+
+        {uploadedFiles.length > 0 && (
           <View className={styles.uploadList}>
-            {uploads.map((u, idx) => (
-              <View key={idx} className={styles.uploadItem}>
-                <Text>{u}</Text>
-                <View className={styles.remove} onClick={() => handleRemoveUpload(idx)}>×</View>
+            {uploadedFiles.map((file, idx) => (
+              <View
+                key={idx}
+                style={{
+                  aspectRatio: '1',
+                  background: '#F5F6F7',
+                  borderRadius: 12,
+                  position: 'relative',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 8,
+                  border: '1rpx solid #E5E6EB'
+                }}
+              >
+                {file.type === 'image' && file.preview ? (
+                  <Image
+                    src={file.preview}
+                    mode="aspectFill"
+                    style={{ width: '100%', height: '65%', borderRadius: 8, marginBottom: 6 }}
+                  />
+                ) : (
+                  <Text style={{ fontSize: 36, marginBottom: 4 }}>{file.type === 'pdf' ? '📕' : '📄'}</Text>
+                )}
+                <Text
+                  style={{
+                    fontSize: 18,
+                    color: '#595959',
+                    textAlign: 'center',
+                    width: '100%',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {file.name.length > 8 ? file.name.slice(0, 6) + '...' : file.name}
+                </Text>
+                <Text style={{ fontSize: 18, color: '#8C8C8C', marginTop: 2 }}>{file.size}</Text>
+                <View
+                  onClick={() => handleRemoveUpload(idx)}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    width: 44,
+                    height: 44,
+                    background: 'rgba(255,59,48,0.9)',
+                    color: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 22,
+                    fontWeight: 'bold',
+                    borderBottomLeftRadius: 10
+                  }}
+                >
+                  ×
+                </View>
               </View>
             ))}
           </View>
@@ -330,7 +547,7 @@ const ConfirmPage: React.FC = () => {
             {'\n'}1. <strong>胃镜检查</strong>：检查前8小时禁食、6小时禁水
             {'\n'}2. <strong>肠镜检查</strong>：按医嘱完成肠道准备
             {'\n'}3. 服用抗凝/抗血小板药物（阿司匹林等）已告知医生
-            {'\n'}4. 无痛检查当日有家属陪同
+            {'\n'}4. {examType === 'painless' ? '无痛检查当日有家属陪同' : '知晓并同意检查相关风险'}
           </View>
         </View>
       </View>
@@ -346,7 +563,7 @@ const ConfirmPage: React.FC = () => {
           className={classnames(styles.submitBtn, !canSubmit && styles.disabled)}
           onClick={handleSubmit}
         >
-          确认预约
+          {submitting ? '提交中...' : '确认预约'}
         </View>
       </View>
     </ScrollView>
