@@ -105,7 +105,10 @@ const RecordsPage: React.FC = () => {
     return [...Array(5)].map((_, i) => (
       <Text
         key={i}
-        className={classnames(interactive ? styles.star : undefined, i < num && (interactive ? styles.active : undefined)}
+        className={classnames(
+          interactive ? styles.star : styles.displayStar,
+          i < num && (interactive ? styles.active : styles.activeStar
+        )}
         onClick={() => interactive && onSelect?.(i + 1)}
       >★</Text>
     ));

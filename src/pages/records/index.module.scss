@@ -433,6 +433,17 @@
   }
 }
 
+.displayStar {
+  font-size: 32rpx;
+  color: #E0E0E0;
+  margin-right: 2rpx;
+  transition: color $transition-fast;
+
+  &.activeStar {
+    color: #FFB800;
+  }
+}
+
 .commentInput {
   background: $color-bg-page;
   border-radius: $radius-md;

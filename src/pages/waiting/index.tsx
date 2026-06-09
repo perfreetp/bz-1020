@@ -12,17 +12,40 @@ const WaitingPage: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { currentAppt, waitingIndex } = useMemo(() => {
-    // 优先找 waiting/calling 状态的
-    const active = state.appointments.findIndex(a =>
-      a.status === 'waiting' || a.status === 'calling'
+    // 过滤掉已取消和已完成的，只看活跃预约
+    const activeAppts = state.appointments.filter(a =>
+      a.status === 'waiting' || a.status === 'calling' || a.status === 'confirmed'
     );
-    if (active >= 0) {
-      // 如果还没分配序号，自动分配一个
-      const appt = state.appointments[active];
-      if (!appt.queueNumber) {
-        return { currentAppt: { ...appt, queueNumber: 12 + active, currentNumber: 7 }, waitingIndex: active };
+
+    // 优先找 waiting/calling 状态的（按最新创建排序）
+    let activeIdx = -1;
+    for (let i = 0; i < state.appointments.length; i++) {
+      const a = state.appointments[i];
+      if (a.status === 'waiting' || a.status === 'calling') {
+        activeIdx = i;
+        break;
       }
-      return { currentAppt: appt, waitingIndex: active };
+    }
+
+    // 如果没有 waiting/calling，找最新的 confirmed 当作正在候诊
+    if (activeIdx < 0 && activeAppts.length > 0) {
+      const latestConfirmed = activeAppts.find(a => a.status === 'confirmed');
+      if (latestConfirmed) {
+        activeIdx = state.appointments.findIndex(a => a.id === latestConfirmed.id);
+      }
+    }
+
+    if (activeIdx >= 0) {
+      const appt = state.appointments[activeIdx];
+      // 如果还没分配序号，自动分配
+      if (!appt.queueNumber) {
+        const qNum = 10 + activeIdx;
+        return {
+          currentAppt: { ...appt, queueNumber: qNum, currentNumber: Math.max(1, qNum - 5) },
+          waitingIndex: activeIdx
+        };
+      }
+      return { currentAppt: appt, waitingIndex: activeIdx };
     }
     return { currentAppt: null, waitingIndex: -1 };
   }, [state.appointments]);

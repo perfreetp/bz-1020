@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
 import Taro from '@tarojs/taro';
-import { Appointment, MessageItem, Department } from '@/types/appointment';
+import { Appointment, MessageItem, Department, UploadedReport } from '@/types/appointment';
 import { appointments as defaultAppointments, currentWaitingInfo } from '@/data/appointments';
 import { messages as defaultMessages } from '@/data/messages';
 import { departments } from '@/data/departments';
@@ -11,7 +11,7 @@ interface AppState {
   selectedDepartment: Department | null;
   selectedDate: string;
   selectedSlot: string;
-  uploadedReports: string[];
+  uploadedReports: UploadedReport[];
   currentWaitingAppointmentId: string | null;
   reschedulingAppointmentId: string | null;
   patientInfo: {
@@ -41,8 +41,8 @@ type AppAction =
   | { type: 'SET_SELECTED_DEPARTMENT'; payload: Department | null }
   | { type: 'SET_SELECTED_DATE'; payload: string }
   | { type: 'SET_SELECTED_SLOT'; payload: string }
-  | { type: 'ADD_REPORT'; payload: string }
-  | { type: 'REMOVE_REPORT'; payload: number }
+  | { type: 'ADD_REPORT'; payload: UploadedReport }
+  | { type: 'REMOVE_REPORT'; payload: string }
   | { type: 'CLEAR_REPORTS' }
   | { type: 'SET_PATIENT_INFO'; payload: Partial<AppState['patientInfo']> }
   | { type: 'SET_COMPANION_INFO'; payload: Partial<AppState['companionInfo']> }
@@ -197,7 +197,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, uploadedReports: [...state.uploadedReports, action.payload] };
 
     case 'REMOVE_REPORT':
-      return { ...state, uploadedReports: state.uploadedReports.filter((_, i) => i !== action.payload) };
+      return { ...state, uploadedReports: state.uploadedReports.filter(r => r.id !== action.payload) };
 
     case 'CLEAR_REPORTS':
       return { ...state, uploadedReports: [] };
@@ -235,7 +235,7 @@ interface AppContextType {
     slot: string;
     price: number;
     duration: number;
-    reports?: string[];
+    reports?: UploadedReport[];
     companion?: { name: string; phone: string; relation: string } | null;
     fastingConfirmed: boolean;
   }) => Appointment;

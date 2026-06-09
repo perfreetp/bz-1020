@@ -54,7 +54,7 @@ export interface Appointment {
   timeSlot: string;
   patientInfo: PatientInfo;
   companionInfo?: CompanionInfo;
-  previousReports?: string[];
+  previousReports?: UploadedReport[];
   fastingConfirmed: boolean;
   status: 'pending' | 'confirmed' | 'waiting' | 'calling' | 'completed' | 'cancelled' | 'missed';
   queueNumber?: number;
@@ -86,6 +86,15 @@ export interface MessageItem {
   time: string;
   read: boolean;
   appointmentId?: string;
+}
+
+export interface UploadedReport {
+  id: string;
+  name: string;
+  path: string;
+  size: string;
+  type: 'image' | 'pdf' | 'file';
+  preview?: string;
 }
 
 export interface PreparationStep {

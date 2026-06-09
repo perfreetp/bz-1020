@@ -6,16 +6,8 @@ import styles from './index.module.scss';
 import { departments } from '@/data/departments';
 import StepIndicator from '@/components/StepIndicator';
 import { formatDisplayDate } from '@/utils/date';
-import { Department } from '@/types/appointment';
+import { Department, UploadedReport } from '@/types/appointment';
 import { useApp } from '@/store/AppContext';
-
-interface UploadedFile {
-  name: string;
-  path: string;
-  size: string;
-  type: 'image' | 'pdf' | 'file';
-  preview?: string;
-}
 
 const ConfirmPage: React.FC = () => {
   const { state, dispatch, createAppointment } = useApp();
@@ -44,13 +36,22 @@ const ConfirmPage: React.FC = () => {
   const [companionPhone, setCompanionPhone] = useState(state.companionInfo.phone);
   const [companionRelation, setCompanionRelation] = useState(state.companionInfo.relation);
 
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  // 初始化时从 state.uploadedReports 恢复
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedReport[]>(state.uploadedReports);
   const [fastingConfirmed, setFastingConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (isPainlessDefault) setExamType('painless');
   }, [isPainlessDefault]);
+
+  // 同步本地 uploadedFiles 到 Context
+  useEffect(() => {
+    // 如果 Context 里有但本地没有，就同步进来（比如从其他页面回来）
+    if (state.uploadedReports.length > uploadedFiles.length) {
+      setUploadedFiles(state.uploadedReports);
+    }
+  }, [state.uploadedReports.length]);
 
   const relations = ['配偶', '子女', '父母', '朋友', '其他'];
 
@@ -68,6 +69,8 @@ const ConfirmPage: React.FC = () => {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
+  const genReportId = () => `rpt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
   const handleUpload = async () => {
     console.log('[Confirm] Upload file clicked');
     if (uploadedFiles.length >= 6) {
@@ -81,38 +84,79 @@ const ConfirmPage: React.FC = () => {
       });
 
       if (actionSheet.tapIndex === 0) {
+        // 选择图片
         const res = await Taro.chooseImage({
           count: 6 - uploadedFiles.length,
           sizeType: ['compressed'],
           sourceType: ['album', 'camera']
         });
-        const newFiles: UploadedFile[] = await Promise.all(
-          res.tempFiles.map(async (f) => ({
-            name: `既往报告_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.jpg`,
-            path: f.path,
-            size: formatFileSize(f.size),
-            type: 'image',
-            preview: f.path
-          }))
-        );
-        setUploadedFiles([...uploadedFiles, ...newFiles]);
-        newFiles.forEach(f => dispatch({ type: 'ADD_REPORT', payload: f.name }));
+        const newFiles: UploadedReport[] = res.tempFiles.map((f) => ({
+          id: genReportId(),
+          name: `既往报告_${Date.now()}_${Math.random().toString(36).slice(2, 5)}.jpg`,
+          path: f.path,
+          size: formatFileSize(f.size),
+          type: 'image',
+          preview: f.path
+        }));
+        const merged = [...uploadedFiles, ...newFiles];
+        setUploadedFiles(merged);
+        // 同步到 Context
+        newFiles.forEach(f => dispatch({ type: 'ADD_REPORT', payload: f }));
         console.log('[Confirm] Image uploaded:', newFiles);
         Taro.showToast({ title: `已上传${newFiles.length}张图片`, icon: 'success' });
       } else {
-        // 模拟文件选择（小程序端可使用chooseMessageFile）
-        const mockFiles: UploadedFile[] = [
-          {
-            name: `胃镜报告_${Date.now()}.pdf`,
-            path: 'mock://pdf/' + Date.now(),
-            size: '1.2 MB',
-            type: 'pdf'
+        // 选择文件 - 小程序端调 chooseMessageFile
+        try {
+          // @ts-ignore - chooseMessageFile 在某些类型声明中可能不存在
+          const res = await Taro.chooseMessageFile({
+            count: 6 - uploadedFiles.length,
+            type: 'file'
+          });
+          if (res && res.tempFiles) {
+            const newFiles: UploadedReport[] = res.tempFiles.map((f: any) => {
+              const isPdf = f.name && f.name.toLowerCase().endsWith('.pdf');
+              return {
+                id: genReportId(),
+                name: f.name || `报告文件_${Date.now()}.${isPdf ? 'pdf' : 'doc'}`,
+                path: f.path || f.tempFilePath || 'mock://file',
+                size: formatFileSize(f.size || 0),
+                type: isPdf ? 'pdf' : 'file',
+                preview: undefined
+              };
+            });
+            const merged = [...uploadedFiles, ...newFiles];
+            setUploadedFiles(merged);
+            newFiles.forEach(f => dispatch({ type: 'ADD_REPORT', payload: f }));
+            console.log('[Confirm] File uploaded via chooseMessageFile:', newFiles);
+            Taro.showToast({ title: `已上传${newFiles.length}个文件`, icon: 'success' });
           }
-        ];
-        setUploadedFiles([...uploadedFiles, ...mockFiles]);
-        mockFiles.forEach(f => dispatch({ type: 'ADD_REPORT', payload: f.name }));
-        console.log('[Confirm] File uploaded:', mockFiles);
-        Taro.showToast({ title: '文件上传成功', icon: 'success' });
+        } catch (fileErr) {
+          // H5或不支持chooseMessageFile的环境，走模拟选择
+          console.warn('[Confirm] chooseMessageFile not available, fallback to mock', fileErr);
+          const mockFiles: UploadedReport[] = [
+            {
+              id: genReportId(),
+              name: `胃镜检查报告_${Date.now()}.pdf`,
+              path: 'mock://pdf/' + Date.now(),
+              size: '1.2 MB',
+              type: 'pdf'
+            },
+            {
+              id: genReportId(),
+              name: `肠镜病理报告_${Date.now()}.docx`,
+              path: 'mock://doc/' + Date.now(),
+              size: '384 KB',
+              type: 'file'
+            }
+          ];
+          const pickCount = Math.min(1, 6 - uploadedFiles.length);
+          const picks = mockFiles.slice(0, pickCount);
+          const merged = [...uploadedFiles, ...picks];
+          setUploadedFiles(merged);
+          picks.forEach(f => dispatch({ type: 'ADD_REPORT', payload: f }));
+          console.log('[Confirm] Mock file uploaded:', picks);
+          Taro.showToast({ title: `已上传${picks.length}个文件`, icon: 'success' });
+        }
       }
     } catch (e) {
       if ((e as any).errMsg !== 'showActionSheet:fail cancel') {
@@ -121,10 +165,11 @@ const ConfirmPage: React.FC = () => {
     }
   };
 
-  const handleRemoveUpload = (idx: number) => {
-    const removed = uploadedFiles[idx];
-    setUploadedFiles(uploadedFiles.filter((_, i) => i !== idx));
-    dispatch({ type: 'REMOVE_REPORT', payload: idx });
+  const handleRemoveUpload = (id: string) => {
+    const removed = uploadedFiles.find(f => f.id === id);
+    if (!removed) return;
+    setUploadedFiles(uploadedFiles.filter(f => f.id !== id));
+    dispatch({ type: 'REMOVE_REPORT', payload: id });
     console.log(`[Confirm] Removed file: ${removed.name}`);
     Taro.showToast({ title: '已删除', icon: 'success' });
   };
@@ -147,7 +192,9 @@ const ConfirmPage: React.FC = () => {
     }
 
     setSubmitting(true);
-    console.log('[Confirm] Submit appointment, reports:', uploadedFiles.map(f => f.name));
+    // 提交时，使用当前的 uploadedFiles（已经反映了用户的删除操作）
+    const reportsToSave: UploadedReport[] = [...uploadedFiles];
+    console.log('[Confirm] Submit appointment, reports count:', reportsToSave.length, reportsToSave.map(f => f.name));
     Taro.showLoading({ title: '提交预约中...' });
 
     // 更新患者信息和陪同信息到全局状态
@@ -175,12 +222,16 @@ const ConfirmPage: React.FC = () => {
           slot: selectedSlot,
           price: totalPrice,
           duration: department.duration,
-          reports: uploadedFiles.map(f => f.name),
+          reports: reportsToSave, // 使用用户当前上传的（已删除的不再包含）
           companion: (examType === 'painless' && companionName && companionPhone)
             ? { name: companionName, phone: companionPhone, relation: companionRelation }
             : null,
           fastingConfirmed
         });
+
+        // 提交成功后清空本地和 Context 中的 uploadedReports
+        dispatch({ type: 'CLEAR_REPORTS' });
+        setUploadedFiles([]);
 
         Taro.hideLoading();
         Taro.showModal({
@@ -191,6 +242,7 @@ const ConfirmPage: React.FC = () => {
 检查方式：${examType === 'painless' ? '无痛检查' : '普通检查'}
 检查时间：${formatDisplayDate(selectedDate)} ${selectedSlot}
 检查费用：¥${totalPrice}
+既往报告：${reportsToSave.length > 0 ? `${reportsToSave.length}份` : '未上传'}
 
 请按要求做好检查前准备，
 建议提前30分钟到院报到。`,
@@ -299,14 +351,14 @@ const ConfirmPage: React.FC = () => {
             color: '#6B21A8',
             lineHeight: 1.6
           }}>
-            � 本项目已包含无痛检查，按套餐价 ¥{basePrice} 收取
+            💉 本项目已包含无痛检查，按套餐价 ¥{basePrice} 收取
           </View>
         </View>
       )}
 
       <View className={styles.section}>
         <View className={styles.sectionHeader}>
-          <View className={styles.icon}>�👤</View>
+          <View className={styles.icon}></View>
           <Text className={styles.title}>患者信息</Text>
           <Text className={styles.required}>*</Text>
         </View>
@@ -464,9 +516,9 @@ const ConfirmPage: React.FC = () => {
 
         {uploadedFiles.length > 0 && (
           <View className={styles.uploadList}>
-            {uploadedFiles.map((file, idx) => (
+            {uploadedFiles.map((file) => (
               <View
-                key={idx}
+                key={file.id}
                 style={{
                   aspectRatio: '1',
                   background: '#F5F6F7',
@@ -488,7 +540,9 @@ const ConfirmPage: React.FC = () => {
                     style={{ width: '100%', height: '65%', borderRadius: 8, marginBottom: 6 }}
                   />
                 ) : (
-                  <Text style={{ fontSize: 36, marginBottom: 4 }}>{file.type === 'pdf' ? '📕' : '📄'}</Text>
+                  <Text style={{ fontSize: 36, marginBottom: 4 }}>
+                    {file.type === 'pdf' ? '📕' : '📄'}
+                  </Text>
                 )}
                 <Text
                   style={{
@@ -505,7 +559,7 @@ const ConfirmPage: React.FC = () => {
                 </Text>
                 <Text style={{ fontSize: 18, color: '#8C8C8C', marginTop: 2 }}>{file.size}</Text>
                 <View
-                  onClick={() => handleRemoveUpload(idx)}
+                  onClick={() => handleRemoveUpload(file.id)}
                   style={{
                     position: 'absolute',
                     top: 0,
