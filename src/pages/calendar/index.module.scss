@@ -1,0 +1,262 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  background: $color-bg-page;
+  display: flex;
+  flex-direction: column;
+}
+
+.deptBar {
+  background: $color-bg-card;
+  padding: $spacing-lg $page-padding;
+  border-bottom: 1rpx solid $color-divider;
+
+  .name {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    color: $color-text-primary;
+    margin-bottom: $spacing-xs;
+  }
+
+  .meta {
+    font-size: $font-size-sm;
+    color: $color-text-tertiary;
+  }
+}
+
+.dateSection {
+  background: $color-bg-card;
+  padding: $spacing-lg 0 $spacing-md;
+  margin-bottom: $spacing-md;
+}
+
+.sectionTitle {
+  padding: 0 $page-padding;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-md;
+
+  .title {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    color: $color-text-primary;
+  }
+
+  .tip {
+    font-size: $font-size-xs;
+    color: $color-text-tertiary;
+  }
+}
+
+.dateScroll {
+  padding: 0 $page-padding;
+  @include scroll-x-container;
+}
+
+.dateItem {
+  @include scroll-x-item(140rpx);
+  margin-right: $spacing-sm;
+  height: 160rpx;
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border: 2rpx solid transparent;
+  transition: all $transition-base;
+
+  &.active {
+    background: $color-primary;
+    border-color: $color-primary;
+    box-shadow: 0 4rpx 16rpx rgba(25, 137, 250, 0.3);
+
+    .weekday, .day, .slots {
+      color: $color-text-white;
+    }
+  }
+
+  &.disabled {
+    opacity: 0.4;
+    pointer-events: none;
+
+    .weekday, .day, .slots {
+      color: $color-text-tertiary;
+    }
+  }
+
+  &:active { transform: scale(0.96); }
+
+  .today {
+    position: absolute;
+    top: 8rpx;
+    right: 8rpx;
+    padding: 2rpx 10rpx;
+    background: $color-error;
+    color: $color-text-white;
+    border-radius: $radius-round;
+    font-size: 20rpx;
+  }
+
+  .weekday {
+    font-size: $font-size-sm;
+    color: $color-text-secondary;
+    margin-bottom: 4rpx;
+  }
+
+  .day {
+    font-size: $font-size-xxl;
+    font-weight: $font-weight-bold;
+    color: $color-text-primary;
+    line-height: 1;
+    margin-bottom: 8rpx;
+  }
+
+  .slots {
+    font-size: 20rpx;
+    color: $color-success;
+
+    &.few { color: $color-warning; }
+    &.none { color: $color-text-disabled; }
+  }
+}
+
+.slotSection {
+  flex: 1;
+  background: $color-bg-card;
+  padding: $spacing-lg 0 200rpx;
+  margin-bottom: $spacing-md;
+}
+
+.periodSection {
+  padding: 0 $page-padding;
+  margin-bottom: $spacing-lg;
+
+  &:last-child { margin-bottom: 0; }
+}
+
+.periodHeader {
+  display: flex;
+  align-items: center;
+  margin-bottom: $spacing-md;
+
+  .icon {
+    font-size: $font-size-lg;
+    margin-right: $spacing-xs;
+  }
+
+  .label {
+    font-size: $font-size-md;
+    font-weight: $font-weight-semibold;
+    color: $color-text-primary;
+  }
+
+  .count {
+    margin-left: auto;
+    font-size: $font-size-sm;
+    color: $color-text-tertiary;
+  }
+}
+
+.slotGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $spacing-sm;
+}
+
+.slotItem {
+  height: 100rpx;
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2rpx solid transparent;
+  transition: all $transition-base;
+
+  &.active {
+    background: $color-primary-bg;
+    border-color: $color-primary;
+
+    .time { color: $color-primary; font-weight: $font-weight-semibold; }
+    .remain { color: $color-primary; }
+  }
+
+  &.disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  &:active { transform: scale(0.96); }
+
+  .time {
+    font-size: $font-size-md;
+    color: $color-text-primary;
+    margin-bottom: 4rpx;
+  }
+
+  .remain {
+    font-size: 20rpx;
+    color: $color-success;
+
+    &.few { color: $color-warning; }
+    &.none { color: $color-text-disabled; }
+  }
+}
+
+.bottomBar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: $color-bg-card;
+  padding: $spacing-md $page-padding calc(env(safe-area-inset-bottom) + $spacing-md);
+  box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 100;
+}
+
+.selectedInfo {
+  flex: 1;
+
+  .label {
+    font-size: $font-size-xs;
+    color: $color-text-tertiary;
+    margin-bottom: 4rpx;
+  }
+
+  .value {
+    font-size: $font-size-md;
+    font-weight: $font-weight-semibold;
+    color: $color-text-primary;
+  }
+}
+
+.submitBtn {
+  @include button-reset;
+  height: $button-height-lg;
+  min-width: 280rpx;
+  padding: 0 $spacing-xl;
+  background: $color-primary;
+  color: $color-text-white;
+  border-radius: $radius-button;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+
+  &.disabled {
+    background: $color-text-disabled;
+    pointer-events: none;
+  }
+
+  &:active {
+    background: $color-primary-dark;
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+}

@@ -1,0 +1,421 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 200rpx);
+}
+
+.stepBar {
+  background: $color-bg-card;
+  padding: $spacing-md $page-padding;
+  border-bottom: 1rpx solid $color-divider;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.section {
+  background: $color-bg-card;
+  margin: $spacing-md 0;
+  padding: $spacing-lg $page-padding;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  margin-bottom: $spacing-lg;
+
+  .icon {
+    width: 48rpx;
+    height: 48rpx;
+    border-radius: $radius-sm;
+    background: $color-primary-bg;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: $font-size-lg;
+    margin-right: $spacing-sm;
+  }
+
+  .title {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    color: $color-text-primary;
+  }
+
+  .required {
+    color: $color-error;
+    margin-left: 4rpx;
+  }
+}
+
+.summaryCard {
+  background: linear-gradient(135deg, rgba(25, 137, 250, 0.08) 0%, rgba(77, 166, 255, 0.06) 100%);
+  border-radius: $radius-md;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
+
+  .row {
+    display: flex;
+    align-items: flex-start;
+    padding: $spacing-xs 0;
+
+    .label {
+      min-width: 140rpx;
+      font-size: $font-size-md;
+      color: $color-text-tertiary;
+    }
+
+    .value {
+      flex: 1;
+      font-size: $font-size-md;
+      color: $color-text-primary;
+      font-weight: $font-weight-medium;
+    }
+  }
+}
+
+.typePicker {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $spacing-md;
+  margin-bottom: $spacing-sm;
+}
+
+.typeCard {
+  background: $color-bg-page;
+  border: 2rpx solid $color-border;
+  border-radius: $radius-md;
+  padding: $spacing-lg;
+  transition: all $transition-base;
+  position: relative;
+
+  &.active {
+    background: $color-primary-bg;
+    border-color: $color-primary;
+
+    .check {
+      opacity: 1;
+    }
+  }
+
+  &:active { transform: scale(0.98); }
+
+  .check {
+    position: absolute;
+    top: 16rpx;
+    right: 16rpx;
+    width: 36rpx;
+    height: 36rpx;
+    border-radius: $radius-round;
+    background: $color-primary;
+    color: $color-text-white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22rpx;
+    opacity: 0;
+    transition: opacity $transition-base;
+  }
+
+  .icon {
+    font-size: 48rpx;
+    margin-bottom: $spacing-sm;
+  }
+
+  .name {
+    font-size: $font-size-md;
+    font-weight: $font-weight-semibold;
+    color: $color-text-primary;
+    margin-bottom: 4rpx;
+  }
+
+  .desc {
+    font-size: $font-size-xs;
+    color: $color-text-tertiary;
+    line-height: 1.5;
+  }
+
+  .price {
+    font-size: $font-size-md;
+    font-weight: $font-weight-bold;
+    color: $color-error;
+    margin-top: $spacing-xs;
+
+    .currency {
+      font-size: $font-size-xs;
+      font-weight: $font-weight-normal;
+    }
+  }
+}
+
+.formGroup {
+  margin-bottom: $spacing-md;
+
+  &:last-child { margin-bottom: 0; }
+}
+
+.formLabel {
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+  margin-bottom: $spacing-sm;
+  display: flex;
+  align-items: center;
+
+  .required {
+    color: $color-error;
+    margin-right: 4rpx;
+  }
+}
+
+.formInput {
+  height: 88rpx;
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  padding: 0 $spacing-lg;
+  display: flex;
+  align-items: center;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  border: 2rpx solid transparent;
+  transition: border-color $transition-base;
+
+  &:focus-within {
+    border-color: $color-primary;
+    background: $color-bg-card;
+  }
+
+  .prefix {
+    color: $color-text-tertiary;
+    margin-right: $spacing-sm;
+  }
+
+  .placeholder {
+    color: $color-text-disabled;
+  }
+}
+
+.genderPicker {
+  display: flex;
+  gap: $spacing-md;
+}
+
+.genderItem {
+  flex: 1;
+  height: 88rpx;
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+  border: 2rpx solid transparent;
+  transition: all $transition-base;
+
+  &.active {
+    background: $color-primary-bg;
+    border-color: $color-primary;
+    color: $color-primary;
+    font-weight: $font-weight-medium;
+  }
+
+  &:active { transform: scale(0.98); }
+}
+
+.uploadArea {
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  border: 2rpx dashed $color-border;
+  padding: $spacing-xl;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all $transition-base;
+
+  &:active {
+    border-color: $color-primary;
+    background: $color-primary-bg;
+  }
+
+  .icon {
+    font-size: 60rpx;
+    margin-bottom: $spacing-sm;
+    opacity: 0.6;
+  }
+
+  .title {
+    font-size: $font-size-md;
+    color: $color-text-primary;
+    margin-bottom: 4rpx;
+  }
+
+  .hint {
+    font-size: $font-size-xs;
+    color: $color-text-tertiary;
+  }
+}
+
+.uploadList {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $spacing-sm;
+  margin-top: $spacing-md;
+}
+
+.uploadItem {
+  aspect-ratio: 1;
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 60rpx;
+
+  .remove {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 40rpx;
+    height: 40rpx;
+    background: rgba(0, 0, 0, 0.5);
+    color: $color-text-white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24rpx;
+  }
+}
+
+.confirmCheckbox {
+  display: flex;
+  align-items: flex-start;
+  padding: $spacing-md;
+  background: rgba(255, 149, 0, 0.06);
+  border-radius: $radius-md;
+  border: 1rpx solid rgba(255, 149, 0, 0.15);
+
+  .checkbox {
+    width: 40rpx;
+    height: 40rpx;
+    border-radius: $radius-xs;
+    border: 2rpx solid $color-border;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: $spacing-sm;
+    margin-top: 4rpx;
+    flex-shrink: 0;
+    background: $color-bg-card;
+    transition: all $transition-base;
+
+    &.checked {
+      background: $color-warning;
+      border-color: $color-warning;
+
+      .icon { opacity: 1; }
+    }
+
+    .icon {
+      color: $color-text-white;
+      font-size: 24rpx;
+      opacity: 0;
+    }
+  }
+
+  .text {
+    flex: 1;
+    font-size: $font-size-sm;
+    color: #8C6B3D;
+    line-height: 1.7;
+
+    strong {
+      color: #B85C00;
+      font-weight: $font-weight-semibold;
+    }
+  }
+}
+
+.bottomBar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: $color-bg-card;
+  padding: $spacing-md $page-padding calc(env(safe-area-inset-bottom) + $spacing-md);
+  box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 100;
+}
+
+.priceInfo {
+  .label {
+    font-size: $font-size-xs;
+    color: $color-text-tertiary;
+  }
+
+  .price {
+    font-size: 40rpx;
+    font-weight: $font-weight-bold;
+    color: $color-error;
+
+    .currency {
+      font-size: $font-size-md;
+      font-weight: $font-weight-normal;
+    }
+  }
+}
+
+.submitBtn {
+  @include button-reset;
+  height: $button-height-lg;
+  min-width: 320rpx;
+  padding: 0 $spacing-xl;
+  background: $color-primary;
+  color: $color-text-white;
+  border-radius: $radius-button;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+
+  &.disabled {
+    background: $color-text-disabled;
+    pointer-events: none;
+  }
+
+  &:active {
+    background: $color-primary-dark;
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+}
+
+.relationPicker {
+  display: flex;
+  gap: $spacing-xs;
+  flex-wrap: wrap;
+  margin-top: $spacing-sm;
+}
+
+.relationTag {
+  padding: 8rpx 20rpx;
+  background: $color-bg-page;
+  border-radius: $radius-round;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  border: 2rpx solid transparent;
+  transition: all $transition-base;
+
+  &.active {
+    background: $color-primary-bg;
+    border-color: $color-primary;
+    color: $color-primary;
+  }
+
+  &:active { transform: scale(0.96); }
+}

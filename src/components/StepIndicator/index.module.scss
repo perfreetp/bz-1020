@@ -1,0 +1,79 @@
+@use '@/styles/variables.scss' as *;
+
+.wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-lg 0;
+  position: relative;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+  flex: 1;
+}
+
+.circle {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: $radius-round;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  background: $color-bg-hover;
+  color: $color-text-tertiary;
+  border: 2rpx solid $color-border;
+  transition: all $transition-base;
+
+  &.active {
+    background: $color-primary;
+    color: $color-text-white;
+    border-color: $color-primary;
+    box-shadow: 0 4rpx 12rpx rgba(25, 137, 250, 0.3);
+  }
+
+  &.completed {
+    background: $color-success;
+    color: $color-text-white;
+    border-color: $color-success;
+  }
+}
+
+.label {
+  margin-top: $spacing-sm;
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  text-align: center;
+  white-space: nowrap;
+
+  &.active {
+    color: $color-primary;
+    font-weight: $font-weight-medium;
+  }
+
+  &.completed {
+    color: $color-success;
+    font-weight: $font-weight-medium;
+  }
+}
+
+.line {
+  position: absolute;
+  top: 28rpx;
+  left: calc(50% + 30rpx);
+  right: calc(-50% + 30rpx);
+  height: 4rpx;
+  background: $color-border;
+  z-index: 0;
+  transition: background $transition-base;
+
+  &.filled {
+    background: $color-success;
+  }
+}

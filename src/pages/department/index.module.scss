@@ -1,0 +1,223 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  background: $color-bg-page;
+}
+
+.container {
+  padding: 0 $page-padding;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 40rpx);
+}
+
+.filterTabs {
+  display: flex;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: 8rpx;
+  margin: $spacing-lg 0;
+  box-shadow: $shadow-card;
+}
+
+.tabItem {
+  flex: 1;
+  height: $button-height-md;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: $radius-md;
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+  font-weight: $font-weight-medium;
+  transition: all $transition-base;
+
+  &.active {
+    background: $color-primary;
+    color: $color-text-white;
+    box-shadow: 0 4rpx 12rpx rgba(25, 137, 250, 0.25);
+  }
+
+  &:active { opacity: 0.85; }
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: $spacing-lg 0 $spacing-md;
+
+  .title {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    color: $color-text-primary;
+  }
+
+  .count {
+    font-size: $font-size-sm;
+    color: $color-text-tertiary;
+  }
+}
+
+.deptList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+.deptCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  transition: all $transition-base;
+  position: relative;
+  overflow: hidden;
+
+  &:active {
+    transform: scale(0.99);
+    box-shadow: $shadow-card-hover;
+  }
+
+  &.gastroCategory {
+    border-left: 6rpx solid $color-primary;
+  }
+
+  &.colonCategory {
+    border-left: 6rpx solid $color-success;
+  }
+
+  &.bothCategory {
+    border-left: 6rpx solid #AF52DE;
+  }
+}
+
+.cardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: $spacing-sm;
+}
+
+.deptInfo {
+  flex: 1;
+  margin-right: $spacing-md;
+}
+
+.deptName {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-xs;
+}
+
+.deptDesc {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: 1.6;
+  @include text-ellipsis-multi(2);
+}
+
+.priceBox {
+  text-align: right;
+  flex-shrink: 0;
+
+  .price {
+    font-size: $font-size-xl;
+    font-weight: $font-weight-bold;
+    color: $color-error;
+
+    .currency {
+      font-size: $font-size-md;
+      font-weight: $font-weight-normal;
+    }
+  }
+
+  .duration {
+    font-size: $font-size-xs;
+    color: $color-text-tertiary;
+    margin-top: 4rpx;
+  }
+}
+
+.tagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-xs;
+  margin: $spacing-sm 0;
+}
+
+.tag {
+  padding: 6rpx 16rpx;
+  border-radius: $radius-xs;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+
+  &.gastroTag {
+    background: $color-tag-gastro-bg;
+    color: $color-primary;
+  }
+
+  &.colonTag {
+    background: $color-tag-colon-bg;
+    color: $color-success;
+  }
+
+  &.painlessTag {
+    background: $color-tag-painless-bg;
+    color: #AF52DE;
+  }
+}
+
+.cardBottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: $spacing-md;
+  padding-top: $spacing-md;
+  border-top: 1rpx solid $color-divider;
+}
+
+.prepHint {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-right: $spacing-md;
+
+  .icon {
+    margin-right: 8rpx;
+    flex-shrink: 0;
+  }
+
+  .text {
+    @include text-ellipsis;
+    line-height: 1.4;
+  }
+}
+
+.selectBtn {
+  @include button-reset;
+  height: $button-height-sm;
+  min-width: 160rpx;
+  padding: 0 $spacing-lg;
+  background: $color-primary;
+  color: $color-text-white;
+  border-radius: $radius-button;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+
+  &:active {
+    background: $color-primary-dark;
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+}
+
+.noData {
+  padding: 120rpx 0;
+  text-align: center;
+
+  .icon { font-size: 100rpx; margin-bottom: $spacing-md; }
+  .text { font-size: $font-size-md; color: $color-text-tertiary; }
+}

@@ -1,0 +1,409 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  background: $color-bg-page;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 40rpx);
+}
+
+.headerBar {
+  background: $color-bg-card;
+  padding: $spacing-md $page-padding;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1rpx solid $color-divider;
+
+  .title {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    color: $color-text-primary;
+  }
+
+  .readAll {
+    font-size: $font-size-sm;
+    color: $color-primary;
+  }
+}
+
+.categoryTabs {
+  display: flex;
+  background: $color-bg-card;
+  padding: $spacing-sm $page-padding;
+  gap: $spacing-sm;
+  border-bottom: 1rpx solid $color-divider;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.tabItem {
+  flex-shrink: 0;
+  padding: 12rpx 28rpx;
+  border-radius: $radius-round;
+  background: $color-bg-page;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  position: relative;
+  transition: all $transition-base;
+
+  &.active {
+    background: $color-primary;
+    color: $color-text-white;
+    font-weight: $font-weight-medium;
+  }
+
+  &:active { transform: scale(0.96); }
+
+  .badge {
+    position: absolute;
+    top: -6rpx;
+    right: -6rpx;
+    min-width: 32rpx;
+    height: 32rpx;
+    padding: 0 8rpx;
+    background: #FF3B30;
+    color: $color-text-white;
+    border-radius: $radius-round;
+    font-size: 20rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+.summaryCard {
+  margin: $spacing-md $page-padding;
+  background: linear-gradient(135deg, #1989FA 0%, #4DA6FF 100%);
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  color: $color-text-white;
+  box-shadow: 0 4rpx 20rpx rgba(25, 137, 250, 0.2);
+  display: flex;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    width: 200rpx;
+    height: 200rpx;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 50%;
+    right: -50rpx;
+    bottom: -60rpx;
+  }
+
+  .icon {
+    width: 88rpx;
+    height: 88rpx;
+    border-radius: $radius-md;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48rpx;
+    margin-right: $spacing-lg;
+    flex-shrink: 0;
+  }
+
+  .content {
+    flex: 1;
+    position: relative;
+    z-index: 1;
+
+    .count {
+      font-size: 40rpx;
+      font-weight: $font-weight-bold;
+      margin-bottom: 4rpx;
+
+      .num {
+        font-size: 56rpx;
+      }
+    }
+
+    .desc {
+      font-size: $font-size-sm;
+      opacity: 0.85;
+    }
+  }
+
+  .arrow {
+    font-size: $font-size-xl;
+    opacity: 0.6;
+  }
+}
+
+.messageList {
+  padding: 0 $page-padding;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+.messageCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  overflow: hidden;
+  transition: all $transition-base;
+  position: relative;
+
+  &.unread::before {
+    content: '';
+    position: absolute;
+    width: 12rpx;
+    height: 12rpx;
+    background: #FF3B30;
+    border-radius: 50%;
+    top: $spacing-lg;
+    right: $spacing-lg;
+    box-shadow: 0 0 0 4rpx rgba(255, 59, 48, 0.15);
+  }
+
+  &:active { transform: scale(0.99); }
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  padding: $spacing-md $spacing-lg;
+  border-bottom: 1rpx solid $color-divider;
+}
+
+.typeIcon {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: $radius-md;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  margin-right: $spacing-md;
+  flex-shrink: 0;
+
+  &.calling { background: rgba(255, 59, 48, 0.1); }
+  &.report { background: rgba(52, 199, 89, 0.1); }
+  &.appointment { background: rgba(25, 137, 250, 0.1); }
+  &.system { background: rgba(255, 149, 0, 0.1); }
+}
+
+.typeInfo {
+  flex: 1;
+
+  .typeName {
+    font-size: $font-size-md;
+    font-weight: $font-weight-semibold;
+    color: $color-text-primary;
+    margin-bottom: 4rpx;
+    display: flex;
+    align-items: center;
+
+    .unreadDot {
+      width: 16rpx;
+      height: 16rpx;
+      background: #FF3B30;
+      border-radius: 50%;
+      margin-left: 12rpx;
+    }
+  }
+
+  .time {
+    font-size: $font-size-xs;
+    color: $color-text-tertiary;
+  }
+}
+
+.cardBody {
+  padding: $spacing-lg;
+
+  .title {
+    font-size: $font-size-md;
+    font-weight: $font-weight-semibold;
+    color: $color-text-primary;
+    margin-bottom: $spacing-sm;
+  }
+
+  .content {
+    font-size: $font-size-sm;
+    color: $color-text-secondary;
+    line-height: 1.7;
+  }
+}
+
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: $spacing-sm $spacing-lg;
+  border-top: 1rpx solid $color-divider;
+  background: $color-bg-page;
+  gap: $spacing-sm;
+}
+
+.btnLink, .btnPrimary {
+  @include button-reset;
+  height: $button-height-sm;
+  padding: 0 $spacing-md;
+  border-radius: $radius-button;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  transition: all $transition-fast;
+
+  &:active { opacity: 0.9; transform: scale(0.97); }
+}
+
+.btnLink {
+  background: transparent;
+  color: $color-text-secondary;
+}
+
+.btnPrimary {
+  background: $color-primary;
+  color: $color-text-white;
+  min-width: 160rpx;
+}
+
+.emptyBox {
+  margin: $spacing-xl $page-padding;
+  padding: 120rpx $spacing-lg;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  text-align: center;
+
+  .icon {
+    font-size: 120rpx;
+    margin-bottom: $spacing-md;
+  }
+
+  .title {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    color: $color-text-primary;
+    margin-bottom: $spacing-xs;
+  }
+
+  .desc {
+    font-size: $font-size-sm;
+    color: $color-text-tertiary;
+  }
+}
+
+.detailModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.detailModal {
+  background: $color-bg-card;
+  border-radius: $radius-lg $radius-lg 0 0;
+  width: 100%;
+  max-height: 80vh;
+  overflow: hidden;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-lg;
+  border-bottom: 1rpx solid $color-divider;
+
+  .title {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    color: $color-text-primary;
+  }
+
+  .close {
+    font-size: 40rpx;
+    color: $color-text-tertiary;
+    padding: 0 8rpx;
+  }
+}
+
+.modalBody {
+  padding: $spacing-lg;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.modalMeta {
+  display: flex;
+  align-items: center;
+  margin-bottom: $spacing-lg;
+  padding-bottom: $spacing-md;
+  border-bottom: 1rpx solid $color-divider;
+
+  .typeIcon {
+    width: 80rpx;
+    height: 80rpx;
+    font-size: 40rpx;
+  }
+
+  .info {
+    flex: 1;
+
+    .typeName {
+      font-size: $font-size-md;
+      font-weight: $font-weight-semibold;
+      color: $color-text-primary;
+      margin-bottom: 4rpx;
+    }
+
+    .time {
+      font-size: $font-size-xs;
+      color: $color-text-tertiary;
+    }
+  }
+}
+
+.modalContent {
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+  line-height: 1.9;
+  margin-bottom: $spacing-xl;
+  white-space: pre-wrap;
+}
+
+.modalActions {
+  display: flex;
+  padding: $spacing-md $spacing-lg calc(env(safe-area-inset-bottom) + $spacing-md);
+  border-top: 1rpx solid $color-divider;
+  gap: $spacing-md;
+}
+
+.modalBtn {
+  @include button-reset;
+  flex: 1;
+  height: $button-height-md;
+  border-radius: $radius-button;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  transition: all $transition-fast;
+
+  &:active { opacity: 0.9; transform: scale(0.98); }
+
+  &.secondary {
+    background: $color-bg-page;
+    color: $color-text-secondary;
+  }
+
+  &.primary {
+    background: $color-primary;
+    color: $color-text-white;
+  }
+}

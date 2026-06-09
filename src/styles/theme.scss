@@ -1,0 +1,43 @@
+// ============================================
+// 主题配色变量 - 消化内镜叫号预约小程序
+// ============================================
+
+// 品牌主题色：医疗蓝，传达专业与信赖
+$color-primary: #1989FA;
+$color-primary-light: #4DA6FF;
+$color-primary-dark: #0E6FD6;
+$color-primary-bg: rgba(25, 137, 250, 0.08);
+
+// 功能色
+$color-success: #34C759;
+$color-warning: #FF9500;
+$color-error: #FF3B30;
+$color-info: #1989FA;
+
+// 业务状态色
+$color-status-pending: #FF9500;
+$color-status-confirmed: #1989FA;
+$color-status-completed: #34C759;
+$color-status-cancelled: #8C8C8C;
+
+// 背景色
+$color-bg-page: #F5F7FA;
+$color-bg-card: #FFFFFF;
+$color-bg-hover: #F0F2F5;
+$color-bg-banner: linear-gradient(135deg, #1989FA 0%, #4DA6FF 100%);
+
+// 文本色
+$color-text-primary: #1A1A1A;
+$color-text-secondary: #595959;
+$color-text-tertiary: #8C8C8C;
+$color-text-disabled: #BFBFBF;
+$color-text-white: #FFFFFF;
+
+// 边框色
+$color-border: #E8E8E8;
+$color-divider: #F0F2F5;
+
+// 标签色
+$color-tag-gastro-bg: rgba(25, 137, 250, 0.1);
+$color-tag-colon-bg: rgba(52, 199, 89, 0.1);
+$color-tag-painless-bg: rgba(175, 82, 222, 0.1);
