@@ -71,32 +71,56 @@ const ConfirmPage: React.FC = () => {
 
   const genReportId = () => `rpt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-  // 从路径提取文件名和扩展名
-  const extractFileNameFromPath = (filePath: string, fallbackIdx: number): string => {
-    if (!filePath) return `既往报告_${Date.now()}_${fallbackIdx}.jpg`;
-    try {
-      // 去掉 ?query 参数
-      const cleanPath = filePath.split('?')[0];
-      // 取最后一段
-      const segments = cleanPath.split(/[\\/]/);
-      const lastSegment = segments[segments.length - 1];
-      // 如果看起来有扩展名就直接用
-      if (lastSegment && /\.(jpg|jpeg|png|gif|webp|bmp|pdf|doc|docx)$/i.test(lastSegment)) {
-        if (lastSegment.length < 40) return lastSegment;
-        // 太长就截断保留扩展名
-        const ext = lastSegment.slice(lastSegment.lastIndexOf('.'));
-        return `报告文件_${Date.now().toString().slice(-6)}${ext}`;
-      }
-      // 没有扩展名，默认 .jpg
-      return `既往报告_${Date.now()}_${fallbackIdx}.jpg`;
-    } catch {
-      return `既往报告_${Date.now()}_${fallbackIdx}.jpg`;
+  // 黑名单：包含这些关键词的名称就是临时路径，一律不用
+  const TEMP_PATH_KEYWORDS = ['tmp', 'temp', 'wxfile', 'http://', 'https://', '/', '\\', 'blob:', 'file:'];
+
+  // 检查名称是否是一个"正常、可读"的文件名
+  const isReadableFileName = (name: unknown): name is string => {
+    if (typeof name !== 'string') return false;
+    const trimmed = name.trim();
+    if (trimmed.length === 0 || trimmed.length > 80) return false;
+    // 不能包含路径分隔符或临时关键词
+    const lower = trimmed.toLowerCase();
+    for (const kw of TEMP_PATH_KEYWORDS) {
+      if (lower.includes(kw)) return false;
     }
+    // 必须是正常可见字符开头
+    return /^[a-zA-Z0-9_\u4e00-\u9fa5]/.test(trimmed);
+  };
+
+  // 稳定的报告名生成（带序号，不依赖平台临时路径）
+  const genStableReportName = (
+    category: 'image' | 'pdf' | 'file',
+    indexInBatch: number,
+    totalExisting: number
+  ): string => {
+    const seq = String(totalExisting + indexInBatch + 1).padStart(2, '0');
+    const today = new Date();
+    const dateTag = `${today.getMonth() + 1}${today.getDate()}`; // 如 69 表示 6月9日
+    const extMap: Record<string, string> = { image: 'jpg', pdf: 'pdf', file: 'docx' };
+    const typeMap: Record<string, string> = { image: '影像报告', pdf: '检查报告', file: '病历资料' };
+    return `${typeMap[category]}_${dateTag}_${seq}.${extMap[category]}`;
+  };
+
+  // 统一的文件名决策：优先真实名 → 否则稳定名（绝不返回临时路径）
+  const decideReportFileName = (
+    rawName: unknown,
+    category: 'image' | 'pdf' | 'file',
+    indexInBatch: number,
+    totalExisting: number
+  ): string => {
+    // 1. 优先用平台提供的真实可读文件名
+    if (isReadableFileName(rawName)) {
+      return rawName as string;
+    }
+    // 2. 否则用生成的稳定名称
+    return genStableReportName(category, indexInBatch, totalExisting);
   };
 
   const handleUpload = async () => {
     console.log('[Confirm] Upload file clicked');
-    if (uploadedFiles.length >= 6) {
+    const existingCount = uploadedFiles.length;
+    if (existingCount >= 6) {
       Taro.showToast({ title: '最多上传6个文件', icon: 'none' });
       return;
     }
@@ -109,17 +133,18 @@ const ConfirmPage: React.FC = () => {
       if (actionSheet.tapIndex === 0) {
         // 选择图片
         const res = await Taro.chooseImage({
-          count: 6 - uploadedFiles.length,
+          count: 6 - existingCount,
           sizeType: ['compressed'],
           sourceType: ['album', 'camera']
         });
         const newFiles: UploadedReport[] = res.tempFiles.map((f, idx) => {
-          // 优先使用原始文件名（如果 tempFile 上有 name 字段）
-          // 否则从 path 提取，最后 fallback
-          const rawName: any = (f as any).name;
-          const fileName = typeof rawName === 'string' && rawName.length > 0
-            ? rawName
-            : extractFileNameFromPath(f.path, idx);
+          // 使用统一决策：可读原名（如相册有name字段）→ 否则生成稳定名
+          const fileName = decideReportFileName(
+            (f as any).name,
+            'image',
+            idx,
+            existingCount
+          );
           return {
             id: genReportId(),
             name: fileName,
@@ -140,18 +165,19 @@ const ConfirmPage: React.FC = () => {
         try {
           // @ts-ignore - chooseMessageFile 在某些类型声明中可能不存在
           const res = await Taro.chooseMessageFile({
-            count: 6 - uploadedFiles.length,
+            count: 6 - existingCount,
             type: 'file'
           });
           if (res && res.tempFiles) {
-            const newFiles: UploadedReport[] = res.tempFiles.map((f: any) => {
+            const newFiles: UploadedReport[] = res.tempFiles.map((f: any, idx: number) => {
               const isPdf = f.name && f.name.toLowerCase().endsWith('.pdf');
+              const category: 'pdf' | 'file' = isPdf ? 'pdf' : 'file';
               return {
                 id: genReportId(),
-                name: f.name || `报告文件_${Date.now()}.${isPdf ? 'pdf' : 'doc'}`,
+                name: decideReportFileName(f.name, category, idx, existingCount),
                 path: f.path || f.tempFilePath || 'mock://file',
                 size: formatFileSize(f.size || 0),
-                type: isPdf ? 'pdf' : 'file',
+                type: category,
                 preview: undefined
               };
             });
@@ -164,24 +190,24 @@ const ConfirmPage: React.FC = () => {
         } catch (fileErr) {
           // H5或不支持chooseMessageFile的环境，走模拟选择
           console.warn('[Confirm] chooseMessageFile not available, fallback to mock', fileErr);
-          const mockFiles: UploadedReport[] = [
+          const stableMockFiles: UploadedReport[] = [
             {
               id: genReportId(),
-              name: `胃镜检查报告_${Date.now()}.pdf`,
+              name: decideReportFileName(null, 'pdf', 0, existingCount),
               path: 'mock://pdf/' + Date.now(),
               size: '1.2 MB',
               type: 'pdf'
             },
             {
               id: genReportId(),
-              name: `肠镜病理报告_${Date.now()}.docx`,
+              name: decideReportFileName(null, 'file', 1, existingCount),
               path: 'mock://doc/' + Date.now(),
               size: '384 KB',
               type: 'file'
             }
           ];
-          const pickCount = Math.min(1, 6 - uploadedFiles.length);
-          const picks = mockFiles.slice(0, pickCount);
+          const pickCount = Math.min(1, 6 - existingCount);
+          const picks = stableMockFiles.slice(0, pickCount);
           const merged = [...uploadedFiles, ...picks];
           setUploadedFiles(merged);
           picks.forEach(f => dispatch({ type: 'ADD_REPORT', payload: f }));

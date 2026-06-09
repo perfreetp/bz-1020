@@ -4,6 +4,7 @@ import Taro from '@tarojs/taro';
 import classnames from 'classnames';
 import styles from './index.module.scss';
 import { formatDisplayDate, getStatusText } from '@/utils/date';
+import { Appointment, Department } from '@/types/appointment';
 import { useApp } from '@/store/AppContext';
 import { departments } from '@/data/departments';
 
@@ -13,23 +14,16 @@ const IndexPage: React.FC = () => {
   const unreadCount = state.messages.filter(m => !m.read).length;
 
   const latestAppt = useMemo(() => {
-    // 按数组倒序（最新的在前），先找 waiting/calling，再找 confirmed
-    // 过滤掉 cancelled/missed
-    let waitingMatch: Appointment | null = null;
-    let confirmedMatch: Appointment | null = null;
+    // 核心算法：数组新预约在前（unshift），所以从 idx=0 开始逐个找
+    // 找到第一个活跃状态（waiting/calling/confirmed）立即返回
+    // 这样刚提交的新预约（idx=0）不管是 confirmed 还是 waiting，都会被优先选中
+    // 老的 waiting 永远不会盖过它
     for (let i = 0; i < apptList.length; i++) {
       const a = apptList[i];
-      if (a.status === 'waiting' || a.status === 'calling') {
-        waitingMatch = a;
-        break; // waiting/calling 优先级最高，找到就停
-      }
-      if (!confirmedMatch && a.status === 'confirmed') {
-        confirmedMatch = a;
-        // 继续找，因为后面可能有 waiting/calling
+      if (a.status === 'waiting' || a.status === 'calling' || a.status === 'confirmed') {
+        return a;
       }
     }
-    const active = waitingMatch || confirmedMatch;
-    if (active) return active;
     // 没有活跃的，返回最新的已完成（用于显示评价入口）
     return apptList.find(a => a.status === 'completed') || null;
   }, [apptList]);

@@ -12,25 +12,19 @@ const WaitingPage: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { currentAppt, waitingIndex } = useMemo(() => {
-    // 与首页保持完全一致的选择逻辑：
-    // 新预约在数组最前面（unshift），所以从头开始找
-    // 优先级：waiting/calling > confirmed，过滤掉 cancelled/missed
-    let waitingIdx = -1;
-    let confirmedIdx = -1;
-
+    // 与首页 100% 相同的算法：
+    // 新预约 unshift 在数组最前，idx=0 就是最新的
+    // 从 idx=0 开始找，第一个 active（waiting/calling/confirmed）就命中
+    // 这样刚提交的预约（idx=0）永远不会被更早的（idx>0）候诊记录盖过
+    let activeIdx = -1;
     for (let i = 0; i < state.appointments.length; i++) {
       const a = state.appointments[i];
-      if (a.status === 'waiting' || a.status === 'calling') {
-        waitingIdx = i;
-        break; // 优先级最高，找到就停
-      }
-      if (confirmedIdx < 0 && a.status === 'confirmed') {
-        confirmedIdx = i;
-        // 继续找，可能后面有 waiting/calling
+      if (a.status === 'waiting' || a.status === 'calling' || a.status === 'confirmed') {
+        activeIdx = i;
+        break; // 与首页完全一致：命中第一个活跃就停
       }
     }
 
-    const activeIdx = waitingIdx >= 0 ? waitingIdx : confirmedIdx;
     if (activeIdx >= 0) {
       const appt = state.appointments[activeIdx];
       // 如果还没分配序号，自动分配
